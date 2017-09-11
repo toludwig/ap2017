@@ -13,7 +13,8 @@ module Curves ( Point,
                 width,
                 height,
                 toList,
-                normalize) where
+                normalize,
+                toFile) where
 import Text.Printf (printf)
 
 data Point = Point Double Double deriving (Show)
@@ -119,11 +120,6 @@ normalize (Curve h t) = translate (Curve h t) (Point dx dy) where
     dx = pointX h - pointX corner
     dy = pointY h - pointY corner
 
-
-testCurve1, testCurve2 :: Curve
-testCurve1 = Curve (Point 3.0 5.0) [Point 6.0 4.0, Point 1 2]
-testCurve2 = rotate testCurve1 90.0
-
 toSVG ::Curve -> String
 toSVG (Curve h t) = svgString where
   l            = h:t
@@ -136,25 +132,6 @@ repString p      = ""
 
 toFile :: Curve -> FilePath -> IO ()
 toFile c f = writeFile f (toSVG c)
-
-hilbert :: Curve -> Curve
-hilbert c = c0 `connect` c1 `connect` c2 `connect` c3
-   where  w = width c
-          h = height c
-          p = 6
-
-          ch = reflect c $ Vertical 0
-
-          c0 = ch `rotate` (-90) `translate` point (w+p+w, h+p+h)
-          c1 = c `translate` point (w+p+w, h)
-          c2 = c
-          c3 = ch `rotate` 90 `translate` point (0, h+p)
-
-hilbCom = hilbert $ hilbert $ hilbert $ hilbert $ curve (point (0,0)) []
-
-hilbN :: Int -> Curve
-hilbN 0 = hilbert $ curve (point (0,0)) []
-hilbN n = hilbert $ hilbN (n-1)
 
 maxTot :: [Double] -> Double
 maxTot []     = 0
