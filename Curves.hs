@@ -1,4 +1,19 @@
-module Curves () where
+module Curves ( Point,
+                Curve,
+                point,
+                pointX,
+                pointY,
+                curve,
+                connect,
+                rotate,
+                translate,
+                Line (Vertical,Horizontal),
+                reflect,
+                bbox,
+                width,
+                height,
+                toList,
+                normalize) where
 import Text.Printf (printf)
 
 data Point = Point Double Double deriving (Show)
@@ -17,8 +32,13 @@ instance Eq Point where
        | otherwise                                = False
 
 data Curve = Curve Point [Point] deriving (Show)
+instance Eq Curve where
+  Curve h1 t1 == Curve h2 t2
+    | h1 == h2 && t1 == t2 = True
+    | otherwise            = False
+
 curve :: Point -> [Point] -> Curve
-curve h t = Curve h t
+curve = Curve
 
 connect :: Curve -> Curve -> Curve
 connect (Curve h1 t1) (Curve h2 t2) = Curve h1 (t1 ++ [h2] ++ t2)
@@ -33,10 +53,10 @@ rotatePoint :: Double -> Point -> Point
 rotatePoint r p = Point (rotateX p r) (rotateY p r)
 
 rotateX :: Point -> Double -> Double
-rotateX p r = (pointX p) * cos r - (pointY p) * sin r
+rotateX p r = pointX p * cos r - pointY p * sin r
 
 rotateY :: Point -> Double -> Double
-rotateY p r = (pointY p) * cos r + (pointX p) * sin r
+rotateY p r = pointY p * cos r + pointX p * sin r
 
 deg2rad :: Double -> Double
 deg2rad x = x * pi / 180.0
@@ -44,8 +64,8 @@ deg2rad x = x * pi / 180.0
 
 translate :: Curve -> Point -> Curve
 translate (Curve h t) (Point x y) = Curve h' t' where
-    dx = x - (pointX h)
-    dy = y - (pointY h)
+    dx = x - pointX h
+    dy = y - pointY h
     h' = (Point x y)
     t' = map (transPoint dx dy) t
 
@@ -72,10 +92,10 @@ reflectPointV l (Point x y) = Point (2*l - x) y
 bbox :: Curve -> (Point, Point)
 bbox (Curve h t) = (Point minX minY, Point maxX maxY) where
     l = h : t
-    minX = minimum [pointX p | p <- l]
-    minY = minimum [pointY p | p <- l]
-    maxX = maximum [pointX p | p <- l]
-    maxY = maximum [pointY p | p <- l]
+    minX = minTot [pointX p | p <- l]
+    minY = minTot [pointY p | p <- l]
+    maxX = maxTot [pointX p | p <- l]
+    maxY = maxTot [pointY p | p <- l]
 
 
 width, height :: Curve -> Double
@@ -101,13 +121,13 @@ normalize (Curve h t) = translate (Curve h t) (Point dx dy) where
 
 
 testCurve1, testCurve2 :: Curve
-testCurve1 = Curve (Point 3.0 5.0) [(Point 6.0 4.0), (Point 1 2)]
+testCurve1 = Curve (Point 3.0 5.0) [Point 6.0 4.0, Point 1 2]
 testCurve2 = rotate testCurve1 90.0
 
 toSVG ::Curve -> String
 toSVG (Curve h t) = svgString where
   l            = h:t
-  svgString    = (printf "<svg xmlns=\"http://www.w3.org/2000/svg\"\n\twidth=\"%dpx\" height=\"%dpx\" version=\"1.1\">\n<g>" ((ceiling (width (Curve h t)))::Int) ((ceiling (height (Curve h t))::Int))) ++ (repString l) ++ "\n</g>\n</svg>"
+  svgString    = printf "<svg xmlns=\"http://www.w3.org/2000/svg\"\n\twidth=\"%dpx\" height=\"%dpx\" version=\"1.1\">\n<g>" ((ceiling (width (Curve h t)))::Int) ((ceiling (height (Curve h t))::Int)) ++ (repString l) ++ "\n</g>\n</svg>"
 
 repString :: [Point] -> String
 repString []     = ""
@@ -135,3 +155,17 @@ hilbCom = hilbert $ hilbert $ hilbert $ hilbert $ curve (point (0,0)) []
 hilbN :: Int -> Curve
 hilbN 0 = hilbert $ curve (point (0,0)) []
 hilbN n = hilbert $ hilbN (n-1)
+
+maxTot :: [Double] -> Double
+maxTot []     = 0
+maxTot (x1:x2:xs)
+  | x1 < x2   = maxTot (x2:xs)
+  | otherwise = maxTot (x1:xs)
+maxTot (x:xs) = x
+
+minTot :: [Double] -> Double
+minTot []     = 0
+minTot (x1:x2:xs)
+  | x1 < x2   = minTot (x2:xs)
+  | otherwise = minTot (x1:xs)
+minTot (x:xs) = x
