@@ -14,7 +14,8 @@ module Curves ( Point,
                 height,
                 toList,
                 normalize,
-                toFile) where
+                toFile,
+                toSVG) where
 import Text.Printf (printf)
 
 data Point = Point Double Double deriving (Show)
@@ -123,7 +124,7 @@ normalize (Curve h t) = translate (Curve h t) (Point dx dy) where
 toSVG ::Curve -> String
 toSVG (Curve h t) = svgString where
   l            = h:t
-  svgString    = printf "<svg xmlns=\"http://www.w3.org/2000/svg\"\n\twidth=\"%dpx\" height=\"%dpx\" version=\"1.1\">\n<g>" ((ceiling (width (Curve h t)))::Int) ((ceiling (height (Curve h t))::Int)) ++ (repString l) ++ "\n</g>\n</svg>"
+  svgString    = (printf "<svg xmlns=\"http://www.w3.org/2000/svg\"\n\twidth=\"%dpx\" height=\"%dpx\" version=\"1.1\">\n<g>" ((ceiling (width (Curve h t)))::Int) ((ceiling (height (Curve h t))::Int))) ++ (repString l) ++ "\n</g>\n</svg>"
 
 repString :: [Point] -> String
 repString []     = ""
@@ -143,6 +144,6 @@ maxTot (x:xs) = x
 minTot :: [Double] -> Double
 minTot []     = 0
 minTot (x1:x2:xs)
-  | x1 < x2   = minTot (x2:xs)
+  | x1 > x2   = minTot (x2:xs)
   | otherwise = minTot (x1:xs)
 minTot (x:xs) = x
