@@ -1,0 +1,7 @@
+# Tex output
+*.bbl
+*.blg
+*.aux
+*.tex.backup
+*.log
+*.pdf

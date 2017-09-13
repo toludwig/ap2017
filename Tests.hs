@@ -1,6 +1,14 @@
 module Tests () where
 import Curves
 
+-- testing the library
+testCurve1, testCurve2, testCurve3, testCurve4, testCurve5 :: Curve
+testCurve1 = curve (Point 0.0 1.0) [Point 0.0 5.0, Point 0.0 10.0]
+testCurve2 = rotate testCurve1 -90.0 -- coordinates of points should be flipped
+testCurve3 = translate testCurve2 (Point 0, 0) -- line from 0 to 9 on x axis
+testCurve4 = reflect testCurve3 (Horizontal 1) -- line from 0 to 9 with y = 2
+testCurve5 = connect testCurve3 testCurve4
+
 hilbert :: Curve -> Curve
 hilbert c = c0 `connect` c1 `connect` c2 `connect` c3
    where  w = width c
