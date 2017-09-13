@@ -13,25 +13,33 @@ module Curves ( Point,
                 width,
                 height,
                 toList,
-                normalize) where
+                normalize,
+                toFile,
+                toSVG) where
 import Text.Printf (printf)
 
+--Data constructor for Point coordinates
 data Point = Point Double Double deriving (Show)
 point :: (Double, Double) -> Point
 point (x,y) = Point x y
 
+--Getters and Setters for Point coordinates
 pointX :: Point -> Double
 pointX (Point x _) = x
 
 pointY :: Point -> Double
 pointY (Point _ y) = y
 
+--Instantiating Point as member of Equivalency class
 instance Eq Point where
     (Point x1 y1) == (Point x2 y2)
        | abs (x1-x2) < 0.01 && abs (y1-y2) < 0.01 = True
        | otherwise                                = False
 
+--Data constructor for Curves which is a starting point followed by a list of 0 or more points
 data Curve = Curve Point [Point] deriving (Show)
+
+--Instantiating Curve as member of Equivalency class
 instance Eq Curve where
   Curve h1 t1 == Curve h2 t2
     | h1 == h2 && t1 == t2 = True
@@ -40,9 +48,11 @@ instance Eq Curve where
 curve :: Point -> [Point] -> Curve
 curve = Curve
 
+--Connect function which adds the next curve to the chain of points in the original curve
 connect :: Curve -> Curve -> Curve
 connect (Curve h1 t1) (Curve h2 t2) = Curve h1 (t1 ++ [h2] ++ t2)
 
+-- Rotates a curve by applying rotatePoint to each point in the curve
 rotate :: Curve -> Double -> Curve
 rotate (Curve h t) d = Curve h' t' where
     r = deg2rad d
@@ -52,6 +62,7 @@ rotate (Curve h t) d = Curve h' t' where
 rotatePoint :: Double -> Point -> Point
 rotatePoint r p = Point (rotateX p r) (rotateY p r)
 
+--Rotates x and y coordinates by a given number of radians
 rotateX :: Point -> Double -> Double
 rotateX p r = pointX p * cos r - pointY p * sin r
 
@@ -61,7 +72,7 @@ rotateY p r = pointY p * cos r + pointX p * sin r
 deg2rad :: Double -> Double
 deg2rad x = x * pi / 180.0
 
-
+--Translates a curve relative to start at a specified point
 translate :: Curve -> Point -> Curve
 translate (Curve h t) (Point x y) = Curve h' t' where
     dx = x - pointX h
@@ -119,11 +130,10 @@ normalize (Curve h t) = translate (Curve h t) (Point dx dy) where
     dx = pointX h - pointX corner
     dy = pointY h - pointY corner
 
-
-toSVG :: Curve -> String
+toSVG ::Curve -> String
 toSVG (Curve h t) = svgString where
   l            = h:t
-  svgString    = printf "<svg xmlns=\"http://www.w3.org/2000/svg\"\n\twidth=\"%dpx\" height=\"%dpx\" version=\"1.1\">\n<g>" ((ceiling (width (Curve h t)))::Int) ((ceiling (height (Curve h t))::Int)) ++ (repString l) ++ "\n</g>\n</svg>"
+  svgString    = (printf "<svg xmlns=\"http://www.w3.org/2000/svg\"\n\twidth=\"%dpx\" height=\"%dpx\" version=\"1.1\">\n<g>" ((ceiling ((width (Curve h t)) + (abs $ pointX h ))::Int)) ((ceiling $ (height (Curve h t)) + (abs $ pointY h))::Int)) ++ (repString l) ++ "\n</g>\n</svg>"
 
 repString :: [Point] -> String
 repString []     = ""
@@ -132,9 +142,6 @@ repString p      = ""
 
 toFile :: Curve -> FilePath -> IO ()
 toFile c f = writeFile f (toSVG c)
-
-max' xs = foldl1 (\x old -> if x > old then x else old) xs
-min' xs = foldl1 (\x old -> if x < old then x else old) xs
 
 maxTot :: [Double] -> Double
 maxTot []     = 0
@@ -149,3 +156,35 @@ minTot (x1:x2:xs)
   | x1 > x2   = minTot (x2:xs)
   | otherwise = minTot (x1:xs)
 minTot (x:xs) = x
+
+peano :: Curve -> Curve
+peano c = c0 `connect` c1 `connect` c2 `connect` c3 `connect` c4 `connect` c5 `connect` c6 `connect` c7 `connect` c8 where
+  w = width c
+  h = height c
+  p = 6.0
+  ch  = reflect c $ Vertical 0
+  cv  = reflect c $ Horizontal 0
+  cvh = reflect ch $ Horizontal 0
+
+  c0 = c
+  c1 = ch `translate` point (w, h+p)
+  c2 = c `translate` point (0, 2*(p+h))
+  c3 = cv `translate` point (w+p, h+2*(p+h))
+  c4 = cvh `translate` point (w+p+w, h+p+h)
+  c5 = cv `translate` point (w+p, h)
+  c6 = c `translate` point (2*(p+w), 0)
+  c7 = ch `translate` point (w+2*(w+p), h+p)
+  c8 = c `translate` point (2*(w+p), 2*(p+h))
+
+hilbert :: Curve -> Curve
+hilbert c = c0 `connect` c1 `connect` c2 `connect` c3
+   where  w = width c
+          h = height c
+          p = 6
+
+          ch = reflect c $ Vertical 0
+
+          c0 = ch `rotate` (-90) `translate` point (w+p+w, h+p+h)
+          c1 = c `translate` point (w+p+w, h)
+          c2 = c
+          c3 = ch `rotate` 90 `translate` point (0, h+p)
