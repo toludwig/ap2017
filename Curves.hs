@@ -133,7 +133,7 @@ normalize (Curve h t) = translate (Curve h t) (Point dx dy) where
 toSVG ::Curve -> String
 toSVG (Curve h t) = svgString where
   l            = h:t
-  svgString    = (printf "<svg xmlns=\"http://www.w3.org/2000/svg\"\n\twidth=\"%dpx\" height=\"%dpx\" version=\"1.1\">\n<g>" ((ceiling (width (Curve h t)))::Int) ((ceiling (height (Curve h t))::Int))) ++ (repString l) ++ "\n</g>\n</svg>"
+  svgString    = (printf "<svg xmlns=\"http://www.w3.org/2000/svg\"\n\twidth=\"%dpx\" height=\"%dpx\" version=\"1.1\">\n<g>" ((ceiling ((width (Curve h t)) + (abs $ pointX h ))::Int)) ((ceiling $ (height (Curve h t)) + (abs $ pointY h))::Int)) ++ (repString l) ++ "\n</g>\n</svg>"
 
 repString :: [Point] -> String
 repString []     = ""
@@ -156,14 +156,6 @@ minTot (x1:x2:xs)
   | x1 > x2   = minTot (x2:xs)
   | otherwise = minTot (x1:xs)
 minTot (x:xs) = x
-
-foldMin :: [Double] -> Double
-foldMin []     = 0
-foldMin (x:xs) = foldr (\a b -> if a < b then a else b) x xs
-
-foldMax :: Curve -> Double
-foldMin []     = 0
-foldMin (x:xs) = foldr (\a b -> if a > b then a else b) x xs
 
 peano :: Curve -> Curve
 peano c = c0 `connect` c1 `connect` c2 `connect` c3 `connect` c4 `connect` c5 `connect` c6 `connect` c7 `connect` c8 where

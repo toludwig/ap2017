@@ -29,24 +29,6 @@ peano c = c0 `connect` c1 `connect` c2 `connect` c3 `connect` c4 `connect` c5 `c
   w = width c
   h = height c
   p = 6.0
-  ch = reflect c $ Vertical 0
-  cv = reflect c $ Horizontal 0
-
-  c0 = c
-  c1 = c `translate` point (w, h+p+h)
-  c2 = c `translate` point (w, h+2*(p+h))
-  c3 = c `rotate` (180) `translate` point (w+p+h, h+2*(w+p+h))
-  c4 = c3 `translate` point (w+p+h, h+p+h)
-  c5 = c3 `translate` point (w+p+h, h)
-  c6 = c `translate` point (w+2*(p+h), h)
-  c7 = c `translate` point (w+2*(p+h), h+p+h)
-  c8 = c `translate` point (w+2*(p+h), h+2*(p+h))
-
-peano :: Curve -> Curve
-peano c = c0 `connect` c1 `connect` c2 `connect` c3 `connect` c4 `connect` c5 `connect` c6 `connect` c7 `connect` c8 where
-  w = width c
-  h = height c
-  p = 6.0
   ch  = reflect c $ Vertical 0
   cv  = reflect c $ Horizontal 0
   cvh = reflect ch $ Horizontal 0
@@ -62,11 +44,11 @@ peano c = c0 `connect` c1 `connect` c2 `connect` c3 `connect` c4 `connect` c5 `c
   c8 = c `translate` point (2*(w+p), 2*(p+h))
 
 peanoBase :: Curve
-peanoBase = peano'' $ curve (point (0,0)) []
+peanoBase = peano $ curve (point (0,0)) []
 
 peanoN :: Int -> Curve
 peanoN 1 = peanoBase
-peanoN n = peano'' $ peanoN (n-1)
+peanoN n = peano $ peanoN (n-1)
 
 
 curve1 :: Curve
