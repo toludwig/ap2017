@@ -28,10 +28,6 @@ hilbN :: Int -> Curve
 hilbN 1 = hilbert $ curve (point (0,0)) []
 hilbN n = hilbert $ hilbN (n-1)
 
-testCurve1, testCurve2 :: Curve
-testCurve1 = curve (point (3.0,5.0)) [point (6.0, 4.0), point (1, 2)]
-testCurve2 = rotate testCurve1 90.0
-
 peano :: Curve -> Curve
 peano c = c0 `connect` c1 `connect` c2 `connect` c3 `connect` c4 `connect` c5 `connect` c6 `connect` c7 `connect` c8 where
   w = width c
@@ -57,22 +53,3 @@ peanoBase = peano $ curve (point (0,0)) []
 peanoN :: Int -> Curve
 peanoN 1 = peanoBase
 peanoN n = peano $ peanoN (n-1)
-
-
-curve1 :: Curve
-curve1 = (curve (point (1,1)) [point (7,8)]) `translate` point (5, 6)
-
-testCurve3 :: Curve
-testCurve3 = peanoBase `translate` point (0, 2*(6+(height peanoBase)))
-
-testCurve4 :: Curve
-testCurve4 = reflect (reflect peanoBase $ Vertical 0) $ Horizontal 0
-
-refVert :: Curve
-refVert = (reflect peanoBase $ Horizontal 0)
-
-testCurve4' :: Curve
-testCurve4' = testCurve4 `translate` point (w+p, h+2*(p+h)) where
-  w = width testCurve4
-  h = height testCurve4
-  p = 6.0
