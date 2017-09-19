@@ -109,6 +109,11 @@ instance Monad SubsM where
      (Right (x,env)) -> case runSubsM (f x) (env,snd c0) of
        (Left e')         -> Left e'
        (Right (x',env')) -> Right (x',env'))
+  ma >> mb = SubsM (\c -> case runSubsM ma c of
+    (Left e)        -> Left e
+    (Right (x,env)) -> case runSubsM mb (env,snd c) of
+      (Left e')         -> Left e'
+      (Right (x',env')) -> Right (x',env'))
   fail s = error s
 
 modifyEnv :: (Env -> Env) -> SubsM ()
@@ -123,10 +128,27 @@ getVar name = SubsM (\c -> case Map.lookup name (fst c) of
   (Just x)  -> Right (x,fst c))
 
 getFunction :: FunName -> SubsM Primitive
-getFunction name = undefined
+getFunction name = SubsM (\c -> case Map.lookup name (snd c) of
+  Nothing  -> Left "Function name not initialised"
+  (Just x) -> Right (x,fst c))
 
 evalExpr :: Expr -> SubsM Value
-evalExpr expr = undefined
+evalExpr (Number x)  = SubsM (\c -> (Right ((IntVal x),fst c)))
+evalExpr (String s)  = SubsM (\c -> (Right ((StringVal s),fst c)))
+evalExpr (Array exprs) = (mapM evalExpr exprs) >>= f where
+  f vals = SubsM (\c -> (Right ((ArrayVal vals),fst c)))
+evalExpr Undefined   = SubsM (\c -> (Right (UndefinedVal,fst c)))
+evalExpr TrueConst   = SubsM (\c -> (Right (TrueVal,fst c)))
+evalExpr FalseConst  = SubsM (\c -> (Right (FalseVal,fst c)))
+evalExpr (Var name)  = getVar name
+evalExpr (Compr arrayC) = undefined
+evalExpr (Call name exprs) = undefined
+evalExpr (Assign name expr) = (evalExpr expr) >>= (putVar name) >> (evalExpr expr)
+evalExpr (Comma expr1 expr2) = (evalExpr expr1) >> (evalExpr expr2)
+
+--type Primitive = [Value] -> Either Error Value
+
+
 
 runExpr :: Expr -> Either Error Value
 runExpr expr = undefined
