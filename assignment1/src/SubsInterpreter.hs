@@ -106,10 +106,8 @@ instance Monad SubsM where
   return x = SubsM (\c -> Right (x, fst c))
   m >>= f  = SubsM (\c0 -> case runSubsM m c0 of
      (Left e)        -> Left e
-     (Right (x,env)) -> case runSubsM (f x) (env,snd c0) of
-       (Left e')         -> Left e'
-       (Right (x',env')) -> Right (x',env'))
-  fail s = error s
+     (Right (x,env)) -> runSubsM (f x) (env,snd c0))
+  fail s = SubsM (\c -> (Left s))
 
 modifyEnv :: (Env -> Env) -> SubsM ()
 modifyEnv f = SubsM (\c -> Right ((),f (fst c)))
@@ -123,10 +121,53 @@ getVar name = SubsM (\c -> case Map.lookup name (fst c) of
   (Just x)  -> Right (x,fst c))
 
 getFunction :: FunName -> SubsM Primitive
-getFunction name = undefined
+getFunction name = SubsM (\c -> case Map.lookup name (snd c) of
+  Nothing  -> Left "Function name not initialised"
+  (Just x) -> Right (x,fst c))
 
 evalExpr :: Expr -> SubsM Value
-evalExpr expr = undefined
+evalExpr (Number x)  = SubsM (\c -> (Right ((IntVal x),fst c)))
+evalExpr (String s)  = SubsM (\c -> (Right ((StringVal s),fst c)))
+evalExpr (Array exprs) = (mapM evalExpr exprs) >>= f where
+  f vals = SubsM (\c -> (Right ((ArrayVal vals),fst c)))
+evalExpr Undefined   = SubsM (\c -> (Right (UndefinedVal,fst c)))
+evalExpr TrueConst   = SubsM (\c -> (Right (TrueVal,fst c)))
+evalExpr FalseConst  = SubsM (\c -> (Right (FalseVal,fst c)))
+evalExpr (Var name)  = getVar name
+evalExpr (Compr aComp) = do
+  val <- evalCompr aComp
+  return val
+evalExpr (Call name exprs) = SubsM (\c -> case runSubsM (mapM evalExpr exprs) c of
+  Left e          -> Left e
+  Right (vals,env) -> case runSubsM (getFunction name) (env,snd c) of
+    Left e           -> Left e
+    Right (prim,env) -> case prim vals of
+      Left e    -> Left e
+      Right val -> Right (val,env))
+evalExpr (Assign name expr) = do
+   val <- (evalExpr expr)
+   putVar name val
+   return val
+
+--evalExpr (Assign name expr) = (evalExpr expr) >>= (putVar name) >> (evalExpr expr)
+
+evalExpr (Comma expr1 expr2) = do
+  evalExpr expr1
+  evalExpr expr2
+
+evalCompr :: ArrayCompr -> SubsM Value
+evalCompr (ACBody expr)           = evalExpr expr
+evalCompr (ACFor name (Array exprs) (ACBody expr')) = (mapM f exprs) >>= g where
+  f expr = do
+    val <- evalExpr expr
+    putVar name val
+    evalCompr (ACBody expr')
+  g vals = SubsM (\c -> (Right ((ArrayVal vals),fst c)))
+evalCompr _ = SubsM (\c -> (Left "Only expressions or one for comprehension permitted at the moment"))
+
+
 
 runExpr :: Expr -> Either Error Value
-runExpr expr = undefined
+runExpr expr = case runSubsM (evalExpr expr) initialContext of
+  Left e          -> (Left e)
+  Right (val,env) -> (Right val)
