@@ -136,9 +136,13 @@ evalExpr Undefined   = SubsM (\c -> (Right (UndefinedVal,fst c)))
 evalExpr TrueConst   = SubsM (\c -> (Right (TrueVal,fst c)))
 evalExpr FalseConst  = SubsM (\c -> (Right (FalseVal,fst c)))
 evalExpr (Var name)  = getVar name
-evalExpr (Compr aComp) = do
-  val <- evalCompr aComp
-  return val
+evalExpr (Compr aComp) = SubsM (\c -> case runSubsM m c of
+  Left e          -> (Left e)
+  Right (val,env) -> (Right (val,fst c))) where
+    m = do
+      val <- evalCompr aComp
+      return val
+
 evalExpr (Call name exprs) = SubsM (\c -> case runSubsM (mapM evalExpr exprs) c of
   Left e          -> Left e
   Right (vals,env) -> case runSubsM (getFunction name) (env,snd c) of
@@ -166,21 +170,21 @@ evalCompr (ACFor name (String string) comp) = do
     iterS x = do
         val <- evalExpr (String [x])
         putVar name val
-        evalCompr comp
+        evalExpr (Compr comp)
 evalCompr (ACFor name expr comp) = do
   (ArrayVal array) <- evalExpr expr
   vals <- mapM iterAr array
   return (ArrayVal vals) where
     iterAr x = do
       putVar name x
-      evalCompr comp
+      evalExpr (Compr comp)
 
 evalCompr (ACIf expr comp) = do
   bool <- evalExpr expr
   if checkBool bool == 1
-    then evalCompr comp
+    then evalExpr (Compr comp)
     else if checkBool bool == 2
-      then return UndefinedVal
+      then return (ArrayVal [])
       else SubsM (\c -> (Left "If must be supplied with a boolean condition"))
 
 --evalCompr _ = SubsM (\c -> (Left "Only expressions or one for comprehension permitted at the moment"))
@@ -197,7 +201,7 @@ runExpr expr = case runSubsM (evalExpr expr) initialContext of
 
 myTest :: IO()
 myTest = do
-  s <- readFile "intro-ast.txt"
+  s <- readFile "scope-ast.txt"
   case runExpr (read s) of
     Left e -> error $ e
     Right res -> putStrLn $ "Result is: " ++ nice res
