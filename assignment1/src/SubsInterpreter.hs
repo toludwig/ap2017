@@ -106,15 +106,8 @@ instance Monad SubsM where
   return x = SubsM (\c -> Right (x, fst c))
   m >>= f  = SubsM (\c0 -> case runSubsM m c0 of
      (Left e)        -> Left e
-     (Right (x,env)) -> case runSubsM (f x) (env,snd c0) of
-       (Left e')         -> Left e'
-       (Right (x',env')) -> Right (x',env'))
-  ma >> mb = SubsM (\c -> case runSubsM ma c of
-    (Left e)        -> Left e
-    (Right (x,env)) -> case runSubsM mb (env,snd c) of
-      (Left e')         -> Left e'
-      (Right (x',env')) -> Right (x',env'))
-  fail s = error s
+     (Right (x,env)) -> runSubsM (f x) (env,snd c0))
+  fail s = SubsM (\c -> (Left s))
 
 modifyEnv :: (Env -> Env) -> SubsM ()
 modifyEnv f = SubsM (\c -> Right ((),f (fst c)))
@@ -141,14 +134,40 @@ evalExpr Undefined   = SubsM (\c -> (Right (UndefinedVal,fst c)))
 evalExpr TrueConst   = SubsM (\c -> (Right (TrueVal,fst c)))
 evalExpr FalseConst  = SubsM (\c -> (Right (FalseVal,fst c)))
 evalExpr (Var name)  = getVar name
-evalExpr (Compr arrayC) = undefined
-evalExpr (Call name exprs) = undefined
-evalExpr (Assign name expr) = (evalExpr expr) >>= (putVar name) >> (evalExpr expr)
-evalExpr (Comma expr1 expr2) = (evalExpr expr1) >> (evalExpr expr2)
+evalExpr (Compr aComp) = do
+  val <- evalCompr aComp
+  return val
+evalExpr (Call name exprs) = SubsM (\c -> case runSubsM (mapM evalExpr exprs) c of
+  Left e          -> Left e
+  Right (vals,env) -> case runSubsM (getFunction name) (env,snd c) of
+    Left e           -> Left e
+    Right (prim,env) -> case prim vals of
+      Left e    -> Left e
+      Right val -> Right (val,env))
+evalExpr (Assign name expr) = do
+   val <- (evalExpr expr)
+   putVar name val
+   return val
 
---type Primitive = [Value] -> Either Error Value
+--evalExpr (Assign name expr) = (evalExpr expr) >>= (putVar name) >> (evalExpr expr)
+
+evalExpr (Comma expr1 expr2) = do
+  evalExpr expr1
+  evalExpr expr2
+
+evalCompr :: ArrayCompr -> SubsM Value
+evalCompr (ACBody expr)           = evalExpr expr
+evalCompr (ACFor name (Array exprs) (ACBody expr')) = (mapM f exprs) >>= g where
+  f expr = do
+    val <- evalExpr expr
+    putVar name val
+    evalCompr (ACBody expr')
+  g vals = SubsM (\c -> (Right ((ArrayVal vals),fst c)))
+evalCompr _ = SubsM (\c -> (Left "Only expressions or one for comprehension permitted at the moment"))
 
 
 
 runExpr :: Expr -> Either Error Value
-runExpr expr = undefined
+runExpr expr = case runSubsM (evalExpr expr) initialContext of
+  Left e          -> (Left e)
+  Right (val,env) -> (Right val)
