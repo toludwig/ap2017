@@ -1,0 +1,83 @@
+\documentclass{article}
+\usepackage[utf8]{inputenc}
+\usepackage{listings}
+\usepackage{draftwatermark}
+\usepackage{gensymb}
+\usepackage{graphicx}
+\graphicspath{ {images/} }
+\SetWatermarkText{$\lambda$}
+\SetWatermarkScale{9}
+
+\title{Advanced Programming 2017\\Assignment 1}
+\author{
+Tom Jager\\
+\texttt{dgr418@alumni.ku.dk}
+\and
+Tobias Ludwig\\
+\texttt{fqj315@alumni.ku.dk}}
+
+\begin{document}
+
+\maketitle
+
+\section{Defining SubsM \textellipsis}
+
+\subsection{\textellipsis to be a Functor}
+
+\begin{lstlisting}[language=Haskell]
+instance Functor SubsM where
+  fmap f fra = SubsM (\c -> case runSubsM fra c of
+    (Left e)        -> Left e
+    (Right (a,env)) -> Right (f a,env))
+\end{lstlisting}
+
+
+
+\subsection{\textellipsis to be an Apllicative}
+\begin{lstlisting}[language=Haskell]
+instance Applicative SubsM where
+  pure a = return a
+  ff <*> fa = SubsM (\c0 -> case runSubsM ff c0 of
+    (Left e)         -> Left e
+    (Right (f, env)) -> case runSubsM fa (env,snd c0) of
+      (Left e')         -> Left e'
+      (Right (a, env')) -> Right (f a, env'))
+\end{lstlisting}
+
+
+\subsection{\textellipsis to be a Monad}
+\begin{lstlisting}[language=Haskell]
+instance Monad SubsM where
+  return x = SubsM (\c -> Right (x, fst c))
+  m >>= f  = SubsM (\c0 -> case runSubsM m c0 of
+     (Left e)        -> Left e
+     (Right (x,env)) -> case runSubsM (f x) (env,snd c0) of
+       (Left e')         -> Left e'
+       (Right (x',env')) -> Right (x',env'))
+  fail s = error s
+\end{lstlisting}
+
+
+\section{Implementing the Primitives}
+
+Primitives are functions from a list of values to an \texttt{Either} type.
+For each operator we generate Errors if the arguments supplied do not match the expected number or types.
+
+\paragraph{strictEquals} is strict because it ensures that same types are compared and no coercion works here.
+We do this by checking the types of the arguments and their values. A special case is the \texttt{UndefinedVal}
+which we consider to be equal to nothing, not even another \texttt{UndefinedVal}, thus returning always \texttt{FalseVal}.
+
+\paragraph{lessThan} works for two \texttt{IntVal}s or two \texttt{StringVal}s (here lexicographically).
+
+\paragraph{plus} is polymorphic for \texttt{IntVal}s and \texttt{StringVal}s like described.
+
+\paragraph{mult and sub} only work on \texttt{IntVal}s.
+
+\paragraph{mod} catches the special case of ``mod by zero'' which is not defined, thus returning an error.
+
+
+\section{Utility functions for working with the context}
+
+
+
+\end{document}
