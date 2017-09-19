@@ -11,6 +11,7 @@ import SubsAst
 import Control.Monad
 import qualified Data.Map as Map
 import Data.Map(Map)
+import Data.List(intercalate)
 
 
 -- | A value is either an integer, the special constant undefined,
@@ -128,8 +129,9 @@ getFunction name = SubsM (\c -> case Map.lookup name (snd c) of
 evalExpr :: Expr -> SubsM Value
 evalExpr (Number x)  = SubsM (\c -> (Right ((IntVal x),fst c)))
 evalExpr (String s)  = SubsM (\c -> (Right ((StringVal s),fst c)))
-evalExpr (Array exprs) = (mapM evalExpr exprs) >>= f where
-  f vals = SubsM (\c -> (Right ((ArrayVal vals),fst c)))
+evalExpr (Array exprs) = do
+  vals <- (mapM evalExpr exprs)
+  return (ArrayVal vals)
 evalExpr Undefined   = SubsM (\c -> (Right (UndefinedVal,fst c)))
 evalExpr TrueConst   = SubsM (\c -> (Right (TrueVal,fst c)))
 evalExpr FalseConst  = SubsM (\c -> (Right (FalseVal,fst c)))
@@ -156,18 +158,54 @@ evalExpr (Comma expr1 expr2) = do
   evalExpr expr2
 
 evalCompr :: ArrayCompr -> SubsM Value
-evalCompr (ACBody expr)           = evalExpr expr
-evalCompr (ACFor name (Array exprs) (ACBody expr')) = (mapM f exprs) >>= g where
-  f expr = do
-    val <- evalExpr expr
-    putVar name val
-    evalCompr (ACBody expr')
-  g vals = SubsM (\c -> (Right ((ArrayVal vals),fst c)))
-evalCompr _ = SubsM (\c -> (Left "Only expressions or one for comprehension permitted at the moment"))
+evalCompr (ACBody expr)                    = evalExpr expr
 
+evalCompr (ACFor name (String string) comp) = do
+  vals <- mapM iterS string
+  return (ArrayVal vals) where
+    iterS x = do
+        val <- evalExpr (String [x])
+        putVar name val
+        evalCompr comp
+evalCompr (ACFor name expr comp) = do
+  (ArrayVal array) <- evalExpr expr
+  vals <- mapM iterAr array
+  return (ArrayVal vals) where
+    iterAr x = do
+      putVar name x
+      evalCompr comp
 
+evalCompr (ACIf expr comp) = do
+  bool <- evalExpr expr
+  if checkBool bool == 1
+    then evalCompr comp
+    else if checkBool bool == 2
+      then return UndefinedVal
+      else SubsM (\c -> (Left "If must be supplied with a boolean condition"))
+
+--evalCompr _ = SubsM (\c -> (Left "Only expressions or one for comprehension permitted at the moment"))
+
+checkBool :: Value -> Int
+checkBool TrueVal  = 1
+checkBool FalseVal = 2
+checkBool _        = 3
 
 runExpr :: Expr -> Either Error Value
 runExpr expr = case runSubsM (evalExpr expr) initialContext of
   Left e          -> (Left e)
   Right (val,env) -> (Right val)
+
+myTest :: IO()
+myTest = do
+  s <- readFile "intro-ast.txt"
+  case runExpr (read s) of
+    Left e -> error $ e
+    Right res -> putStrLn $ "Result is: " ++ nice res
+
+nice :: Value -> String
+nice (IntVal v) = show v
+nice TrueVal = "true"
+nice FalseVal = "false"
+nice (StringVal s) = show s
+nice UndefinedVal = "undefined"
+nice (ArrayVal vs) = "["++ intercalate ", " (map nice vs) ++"]"
