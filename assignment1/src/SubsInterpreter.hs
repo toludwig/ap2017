@@ -72,8 +72,8 @@ lessThan _                                     = Left "< called with incorrect n
 plus :: Primitive
 plus [IntVal i1, IntVal i2]      = Right (IntVal (i1+i2))
 plus [StringVal s1,StringVal s2] = Right (StringVal (s1++s2))
-plus [StringVal s,IntVal i]      = Right (StringVal (s ++ (show i)))
-plus [IntVal i, StringVal s]     = Right (StringVal ((show i) ++ s))
+plus [StringVal s,IntVal i]      = Right (StringVal (s ++ show i))
+plus [IntVal i, StringVal s]     = Right (StringVal (show i ++ s))
 plus [_,_]                       = Left "Only Strings and Integers may be added"
 plus _                           = Left "+ called with incorrect number of arguments"
 
@@ -132,7 +132,7 @@ instance Monad SubsM where
   m >>= f  = SubsM (\c0 -> case runSubsM m c0 of
      (Left e)        -> Left e
      (Right (x,env)) -> runSubsM (f x) (env,snd c0))
-  fail s = SubsM (\_ -> (Left s))
+  fail s = SubsM (\_ -> Left s)
 
 -- Function to update old variable environment with a new one
 
@@ -161,23 +161,21 @@ getFunction name = SubsM (\c -> case Map.lookup name (snd c) of
 -- function that takes an expression and evaluates it using a context
 evalExpr :: Expr -> SubsM Value
 -- Evaluates a basic expression, doesn't change the context and returns the correct value
-evalExpr (Number x)  = SubsM (\c -> (Right ((IntVal x),fst c)))
-evalExpr (String s)  = SubsM (\c -> (Right ((StringVal s),fst c)))
-evalExpr Undefined   = SubsM (\c -> (Right (UndefinedVal,fst c)))
-evalExpr TrueConst   = SubsM (\c -> (Right (TrueVal,fst c)))
-evalExpr FalseConst  = SubsM (\c -> (Right (FalseVal,fst c)))
+evalExpr (Number x)  = SubsM (\c -> Right (IntVal x,fst c))
+evalExpr (String s)  = SubsM (\c -> Right (StringVal s,fst c))
+evalExpr Undefined   = SubsM (\c -> Right (UndefinedVal,fst c))
+evalExpr TrueConst   = SubsM (\c -> Right (TrueVal,fst c))
+evalExpr FalseConst  = SubsM (\c -> Right (FalseVal,fst c))
 -- Evaluates arrays as ArrayVals
 evalExpr (Array exprs) = do
-  vals <- (mapM evalExpr exprs)
+  vals <- mapM evalExpr exprs
   return (ArrayVal vals)
 evalExpr (Var name)  = getVar name
 -- Evaluates comprehensions keeping the original context
 evalExpr (Compr aComp) = SubsM (\c -> case runSubsM m c of
-  Left e    -> (Left e)
-  Right res -> (Right (fst res,fst c))) where
-    m = do
-      val <- evalCompr aComp
-      return val
+  Left e    -> Left e
+  Right res -> Right (fst res,fst c)) where
+    m = evalCompr aComp
 -- Evaluates the function call expression
 evalExpr (Call name exprs) = SubsM (\c -> case runSubsM (mapM evalExpr exprs) c of
   Left e          -> Left e
@@ -188,7 +186,7 @@ evalExpr (Call name exprs) = SubsM (\c -> case runSubsM (mapM evalExpr exprs) c 
       Right val -> Right (val,env'))
 
 evalExpr (Assign name expr) = do
-   val <- (evalExpr expr)
+   val <- evalExpr expr
    putVar name val
    return val
 
@@ -229,8 +227,8 @@ checkBool _        = 3
 
 runExpr :: Expr -> Either Error Value
 runExpr expr = case runSubsM (evalExpr expr) initialContext of
-  Left e          -> (Left e)
-  Right res -> (Right (fst res))
+  Left e          -> Left e
+  Right res -> Right (fst res)
 
 succSubsM :: Int -> SubsM Int
 succSubsM n = SubsM (\c -> Right (n+1,fst c))

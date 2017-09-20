@@ -1,12 +1,9 @@
 \documentclass{article}
 \usepackage[utf8]{inputenc}
 \usepackage{listings}
-\usepackage{draftwatermark}
 \usepackage{gensymb}
 \usepackage{graphicx}
-\graphicspath{ {images/} }
-\SetWatermarkText{$\lambda$}
-\SetWatermarkScale{9}
+\usepackage[a4paper, total={6in, 8in}]{geometry}
 
 \title{Advanced Programming 2017\\Assignment 1}
 \author{
@@ -19,10 +16,17 @@ Tobias Ludwig\\
 \begin{document}
 
 \maketitle
+ 
+\section{SubsM \textellipsis}
+\texttt{SubsM} is a datatype that when given an argument, it returns a function that takes a context and returns either an error or a tuple containing an item and a variable environment.
 
-\section{Defining SubsM \textellipsis}
+\begin{lstlisting}[language=Haskell]
+SubsM a = SubsM {runSubsM :: Context -> Either Error (a, Env)}
+\end{lstlisting}
 
-\subsection{\textellipsis to be a Functor}
+It is used to evaluate expressions in the Subscript language in a given context and return either errors or the value returned from the expression with an updated variable environment. As such it can be seen as a type of state transformer. For use in the evaluator, \texttt{SubsM} must be implemented as an instance of a Functor and as a Monad, it also has been implemented as an Applicative functor but is not used as such yet. 
+
+\subsection{Functor}
 
 \begin{lstlisting}[language=Haskell]
 instance Functor SubsM where
@@ -31,12 +35,13 @@ instance Functor SubsM where
     (Right (a,env)) -> Right (f a,env))
 \end{lstlisting}
 
+The functor instance is a demonstration on how the \texttt{SubsM} functor should behave under the fmap function. As such when fmap is provided with a function \texttt{f :: a -> b} and a functor \texttt{fra :: SubsM a }, fmap extracts the item of type \texttt{a} from the functor and applies it to \texttt{f}, re-wrapping the result into the functor. By implementing it in this fashion, all side-effects from evaluating the \texttt{SubsM a} are kept.
 
+\subsection{Applicative Functor}
 
-\subsection{\textellipsis to be an Apllicative}
 \begin{lstlisting}[language=Haskell]
 instance Applicative SubsM where
-  pure a = return a
+  pure a = SubsM (\c -> Right (a, fst c))
   ff <*> fa = SubsM (\c0 -> case runSubsM ff c0 of
     (Left e)         -> Left e
     (Right (f, env)) -> case runSubsM fa (env,snd c0) of
@@ -44,8 +49,9 @@ instance Applicative SubsM where
       (Right (a, env')) -> Right (f a, env'))
 \end{lstlisting}
 
+The Applicative functor instance demonstrates how \texttt{SubsM} behaves under the applicative operation. \texttt{Pure a} is used to create a functor of type a in a fashion that is side-effect free. \texttt{<*> :: SubsM (a -> b) -> SubsM a -> SubsM (b)} is an operation that unwraps a function and a value from the functor, applies them to each other and then re-wraps the result. It tracks all the side-effects in the process  
 
-\subsection{\textellipsis to be a Monad}
+\subsection{Monad}
 \begin{lstlisting}[language=Haskell]
 instance Monad SubsM where
   return x = SubsM (\c -> Right (x, fst c))
@@ -54,9 +60,65 @@ instance Monad SubsM where
      (Right (x,env)) -> case runSubsM (f x) (env,snd c0) of
        (Left e')         -> Left e'
        (Right (x',env')) -> Right (x',env'))
-  fail s = error s
+  fail s = s
 \end{lstlisting}
 
+The most powerful instance of \texttt{SubsM} is defining it as a Monad. This involves declaring its behavior over three functions, \texttt{return}, \texttt{(>>=)} and \texttt{fail}. \texttt{return x} is identical to \texttt{pure a} in that it takes a value and returns it as a SubsM monad, side-effect free. \texttt{(>>=) :: SubsM a -> (a -> SubsM b) -> SubsM b} takes a \texttt{SubsM a}, extracts the \texttt{a} value and returns the result of applying the function \texttt{f} to it. This maintains all side-effects and error handling. Finally \texttt{fail s} occurs when \texttt{f} does not receive the Monad's type as an argument and returns an error string.
+
+\subsection{Monad Laws}
+
+There are 3 Monad Laws which every Monad must obey. These are the Left Identity, the Right Identity and the Associativity Laws. I will demonstrate the first two with proofs and the last by example.
+
+\subsubsection{1. Left Identity (\texttt{return a >>= f === f a})}
+\begin{lstlisting}[language=Haskell]
+return a >>= f
+--{By definition of return}
+= SubsM (\c -> Right (a, fst c)) >>= f
+--{By definition of >>= and where runSubsM (return a) c = (a,fst c)}
+= SubsM (\c -> runSubsM (f a) (fst c,snd c))
+--{By definition of runSubsM}
+= f a
+\end{lstlisting}
+
+\subsubsection{2. Right Identity (\texttt{m >>= return === m})}
+\begin{lstlisting}[language=Haskell]
+Case 1: runSubsM m c = Left e
+(SubsM x) >>= return
+--{By definition of >>= }
+= SubsM (\c -> Left e)
+--{By definition of (SubsM x)}
+= (SubsM x)
+
+Case 2: runSubsM m c = Right (x,env)
+(SubsM x) >>= return
+--{By definition of >>=}
+runSubsM (return x) (env,snd c)
+--{By definition of return}
+= return x
+--{By definition of return}
+= SubsM x
+\end{lstlisting}
+\subsubsection{3. Associativity}
+
+As associativity is a complex law to prove, I have provided and tested an example. Associativity follows with monads where \texttt{(m >>= f)
+>>= g === m >>= (\textbackslash x -> f x >>= g)}. The following code provides an example of the two cases.
+
+\begin{lstlisting}[language=Haskell]
+assocEx1 :: Int -> SubsM Int
+assocEx1 n = do
+  y <- do
+    x <- succSubsM n
+    squareSubsM x
+  mult10SubsM y
+
+assocEx2 :: Int -> SubsM Int
+assocEx2 n = do
+  x <- succSubsM n
+  y <- squareSubsM x
+  mult10SubsM y
+\end{lstlisting}
+
+As quickCheck passes on a function checking that these two examples are equivalent. We can assume the associativity law holds. This quickCheck can be performed by calling \texttt{assocTest} from SubsTests.
 
 \section{Implementing the Primitives}
 
@@ -78,6 +140,186 @@ which we consider to be equal to nothing, not even another \texttt{UndefinedVal}
 
 \section{Utility functions for working with the context}
 
+\paragraph{modifyEnv} takes an (abstract) function which is applied to the \texttt{Env} of the current context and returns a new one.
+The result is wrapped in a context where we do not need the value of the expression, setting it to \texttt{()}.
+
+\begin{lstlisting}
+modifyEnv :: (Env -> Env) -> SubsM ()
+modifyEnv f = SubsM (\c -> Right ((),f (fst c)))
+\end{lstlisting}
 
 
+\paragraph{putVar} can now use \texttt{modifyEnv} by just calling it with the \texttt{Map.insert} function passing also the name and value
+of the variable to be inserted. This works because \texttt{Env} is of type \texttt{Map Ident Value}. The modiefied environment is returned.
+
+\begin{lstlisting}
+putVar :: Ident -> Value -> SubsM ()
+putVar name val = modifyEnv (Map.insert name val)
+\end{lstlisting}
+
+\paragraph{getVar} also uses \texttt{modifyEnv} only with the \texttt{Map.lookup} function providing the name and the current environment. 
+If the variable is not in there, we report an error, if it is, just the value.
+
+\begin{lstlisting}
+getVar :: Ident -> SubsM Value
+getVar name = SubsM (\c -> case Map.lookup name (fst c) of
+  Nothing -> Left "Variable not initialised"
+  (Just x)  -> Right (x,fst c))
+\end{lstlisting}
+
+\paragraph{getFunction} also performs a lookup but in the second map containing the mapping from the Subscript operators to the Primitive functions.
+\begin{lstlisting}
+getFunction :: FunName -> SubsM Primitive
+getFunction name = SubsM (\c -> case Map.lookup name (snd c) of
+  Nothing  -> Left "Function name not initialised"
+  (Just x) -> Right (x,fst c))
+\end{lstlisting}
+
+
+\section{Implementation of evalExpr and runExpr}
+\subsection{evalExpr}
+\texttt{evalExpr :: Expr -> SubsM Value} is a function that takes an expression from the Abstract Syntax Tree and provides a value for it. It returns a state transformer that will evaluate the expression on a given context. 
+
+The first five expressions are simple to evaluate as they do not change the context but simply return their corresponding value.
+
+\begin{lstlisting}[language=Haskell]
+evalExpr (Number x)  = SubsM (\c -> (Right ((IntVal x),fst c)))
+evalExpr (String s)  = SubsM (\c -> (Right ((StringVal s),fst c)))
+evalExpr Undefined   = SubsM (\c -> (Right (UndefinedVal,fst c)))
+evalExpr TrueConst   = SubsM (\c -> (Right (TrueVal,fst c)))
+evalExpr FalseConst  = SubsM (\c -> (Right (FalseVal,fst c)))
+\end{lstlisting}
+
+The \texttt{Array} value requires the use of the \texttt{mapM} function from the Control.Monad package. This function applies the \texttt{evalExpr} function to each expression in the array and returns a \texttt{SubsM [Value]} with all the evaluated values and the side effects. This is bound to \texttt{return (ArrayVal vals)} so the list of evaluated values is returned as an array value and all the side effects are preserved.
+
+\begin{lstlisting}[language=Haskell]
+evalExpr (Array exprs) = do
+  vals <- (mapM evalExpr exprs)
+  return (ArrayVal vals)
+\end{lstlisting}
+
+The expression \texttt{Var Ident} is evaluated by simply running \texttt{getVar} with the identifier and returning the resulting \texttt{SubsM}. 
+
+\begin{lstlisting}[language=Haskell]
+evalExpr (Var name)  = getVar name
+\end{lstlisting}
+
+Evaluating array comprehensions is slightly more complex. In order to ensure scope rules are obeyed, the resulting monad contains the evaluated value from the comprehension but an un-altered context. This is not a perfect scope solution as it means that anything inside a comprehension does not affect the context, not just assignments in the for loop but due to time constraints this was not fixed.
+
+\begin{lstlisting}[language=Haskell]
+evalExpr (Compr aComp) = SubsM (\c -> case runSubsM m c of
+  Left e    -> (Left e)
+  Right res -> (Right (fst res,fst c))) where
+    m = do
+      val <- evalCompr aComp
+      return val
+\end{lstlisting}
+
+\texttt{evalCompr} is a function that evaluates an array comprehension. If the comprehension is simply an \texttt{ACBody} it performs \texttt{evalExpr} on the expression inside. For comprehensions are separated into loops across strings and loops across arrays but both perform in a similar manner. \texttt{evalCompr} uses \texttt{mapM} to perform the \texttt{iter} monadic function over each element of the array returning a \texttt{SubsM} of a list of values. This is then returned as a \texttt{SubsM ArrayVal}. The iterated function takes an element of an array or string and uses \texttt{putVar} to assign the given identifier to it in the context. The rest of the comprehension is evaluated under that context and the result is returned. In the case of neither a string nor an array being iterated through, the fail function will be called and return the default Haskell error message of incorrect type. 
+
+\begin{lstlisting}[language=Haskell]
+evalCompr :: ArrayCompr -> SubsM Value
+evalCompr (ACBody expr)                     = evalExpr expr
+
+evalCompr (ACFor name (String string) comp) = do
+  vals <- mapM iterS string
+  return (ArrayVal vals) where
+    iterS x = do
+        val <- evalExpr (String [x])
+        putVar name val
+        evalCompr comp
+evalCompr (ACFor name expr comp) = do
+  (ArrayVal array) <- evalExpr expr
+  vals <- mapM iterAr array
+  return (ArrayVal vals) where
+    iterAr x = do
+      putVar name x
+      evalCompr comp
+
+\end{lstlisting}
+
+
+If comprehensions evaluate the expression given with the statement and binds the value of it to the variable \texttt{bool}. \texttt{checkBool} is then used to determine if the value is True, False or not a boolean value. If the value is true then the rest of the comprehension is evaluated and returned. If the value is false then an empty array is returned. This is not in the semantics of the Subscript language as it should simply not evaluate the array but we were unable to come up with a satisfactory solution in time. If the value is neither true nor false it produces the error message "If must be supplied with a boolean expression".     
+
+\begin{lstlisting}[language=Haskell]
+evalCompr (ACIf expr comp) = do
+  bool <- evalExpr expr
+  if checkBool bool == 1
+    then evalCompr comp
+    else if checkBool bool == 2
+      then return (ArrayVal [])
+      else SubsM (const (Left "If must be supplied with a boolean expression"))
+
+checkBool :: Value -> Int        
+checkBool TrueVal  = 1
+checkBool FalseVal = 2
+checkBool _        = 3
+\end{lstlisting}
+The Call function is evaluated as follows. First the argument expressions are evaluated as a \texttt{SubsM [Value]} using \texttt{mapM}. The supplied identifier is used with \texttt{getFunction} to obtain a \texttt{SubsM Primitive} which is then run on the updated context obtained from evaluating the arguments. This reveals the correct primitive function which is applied to the list of argument values revealed earlier. The result of this is, whether it be an error or a value is then returned with the correct variable environment.    
+
+\begin{lstlisting}[language=Haskell]
+evalExpr (Call name exprs) = SubsM (\c -> case runSubsM (mapM evalExpr exprs) c of
+  Left e          -> Left e
+  Right (vals,env) -> case runSubsM (getFunction name) (env,snd c) of
+    Left e           -> Left e
+    Right (prim,env') -> case prim vals of
+      Left e    -> Left e
+      Right val -> Right (val,env'))
+\end{lstlisting}
+
+The Assign instruction simply binds the result of evaluating the given expression to a variable called \texttt{val}. \texttt{putVar} is then used to update the current context appropriately, return is used to produce the resultant \texttt{SubsM Value} with \texttt{val} as the value.
+
+\begin{lstlisting}[language=Haskell]
+evalExpr (Assign name expr) = do
+   val <- (evalExpr expr)
+   putVar name val
+   return val
+\end{lstlisting}
+
+Finally the Comma expression which evaluates one expression, followed by another. It does this by evaluating the first expression and binding the resultant value to \textunderscore as it is unused. Next the second expression is performed and its value is the one returned.
+
+\begin{lstlisting}[language=Haskell]
+evalExpr (Comma expr1 expr2) = do
+  _ <- evalExpr expr1
+  evalExpr expr2
+\end{lstlisting}
+
+\subsection{runExpr}
+
+\texttt{runExpr} is a function that receives as input an expression or a program in the Subscript language. It evaluates this program over the initial context which is an empty variable environment and a procedural environment filled with all the primitive operations. If an error occurs during evaluation then the error is returned and displayed, otherwise the value evaluated from the entire expression is returned.
+
+\begin{lstlisting}[language=Haskell]
+runExpr :: Expr -> Either Error Value
+runExpr expr = case runSubsM (evalExpr expr) initialContext of
+  Left e          -> (Left e)
+  Right res -> (Right (fst res))
+\end{lstlisting}
+
+\section{Testing}
+
+We mainly do unit testing for the operations, testing if expressions are interpreted to the right results and if the context is preserved.
+These come in addition to the tests that were given in the \texttt{*-ast.txt} files but are more specific.
+Property based testing seems to be not very applicable to this task because we have to create very specific constructions.
+
+\subsection{Expressions (context-independent)}
+The easiest thing to test are expressions like \texttt{Call "+" [(Number i1), (Number i2)]} because they do not change the context.
+To do so we wrote unit tests for the + and the $*$ operators which can be called with two integers and return a bool if the result of the interpreted expression was correct.
+The same we did for string concattenation. Automating these procedures is not really useful because arithmetic should work for all numbers if it works for some.
+
+\subsection{Assignments (context-dependent)}
+Testing the persistence of assigned variables is done also in form of unit tests (automated random assignments do not make sense).
+We test this for Integers, Strings and Arrays by assigning a initial value to it which we later read out by just stating \texttt{Var "var"}.
+To ensure we do not confuse the readout value with the value actually returned by the assignment itself we include another expression in between assign and read.
+
+\subsection{Array Comprehensions + Scope}
+Lastly we have some functions for testing array comprehensions.
+We tested the combinations of a single \texttt{ACFor}, a \texttt{ACFor} with \texttt{ACIf} and multiple \texttt{ACFor}s.
+They all work like expected.
+
+The only test still failing is a function where we test whether comprehensions protect/maintain their own variables.
+For that purpose we assign an outer \texttt{Assign "x" (Number 5)} followed by a very simple Comprehension assigning \texttt{ACFor "x" (Array [Number 1])}.
+When we then test for the value of x after the Comprehension we get 1 instead of 5.
+
+\section{Conclusion}
+This version of the SubScript interpreter is a competent one. Error values are detected and reported but in the vast majority of correct expressions, correct values are evaluated. Whilst the scope properties for array comprehensions are not fully finished and falsely evaluating if comprehensions produce incorrect results, the rest of the interpreter works correctly.
 \end{document}
