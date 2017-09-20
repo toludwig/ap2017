@@ -95,6 +95,7 @@ sub _                      = Left "- called with incorrect number of arguments"
 
 modulus :: Primitive
 modulus [IntVal a, IntVal b] = Right (IntVal (a `mod` b))
+modulus [IntVal a, IntVal 0] = Left "mod by zero is not defined"
 modulus [_, _]               = Left "only Integers may be taken %"
 modulus _                    = Left "wrong number of arguments applied to %"
 
