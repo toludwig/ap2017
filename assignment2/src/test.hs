@@ -1,1 +1,1 @@
-import Parsec
+import Text.Parsec

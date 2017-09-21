@@ -1,0 +1,6 @@
+Expr ::= Expr1 ExprOpt
+       | Expr1
+
+ExprOpt ::= ',' Expr
+
+Expr1 ::= Term '*' Term
