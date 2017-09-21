@@ -3,4 +3,7 @@ Expr ::= Expr1 ExprOpt
 
 ExprOpt ::= ',' Expr
 
-Expr1 ::= Term '*' Term
+Expr1 ::= Term
+        | Atom
+
+Term ::=
