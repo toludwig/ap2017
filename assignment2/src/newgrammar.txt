@@ -3,4 +3,43 @@ Expr ::= Expr1 ExprOpt
 
 ExprOpt ::= ',' Expr
 
-Expr1 ::= Term '*' Term
+Expr1 ::= Term1
+
+Term1 ::= Ident '=' Expr1
+        | Term1
+
+Term2 ::= Term3 '===' Expr1
+        | Term3 '<' Expr1
+        | Term3
+
+Term3 ::= Term4 '+' Expr1
+        | Term4 '-' Expr1
+        | Term4
+
+Term4 ::= Atom '*' Expr1
+        | Atom '%' Expr1
+        | Atom
+
+Atom ::= Number
+       | String
+       | 'true'
+       | 'false'
+       | 'undefined'
+       | Ident
+       | '[' Exprs ']'
+       | '[' ArrayFor ']'
+       | '(' Expr ')'
+
+Exprs ::= ϵ
+        | Expr1 CommaExprs
+
+CommaExprs ::= ϵ
+             | ',' Expr1 CommaExprs
+
+ArrayFor ::= 'for' '(' Ident 'of' Expr1 ')' ArrayCompr
+
+ArrayIf ::= 'if' '(' Expr1 ')' ArrayCompr
+
+ArrayCompr ::= Expr1
+             | ArrayFor
+             | ArrayIf
