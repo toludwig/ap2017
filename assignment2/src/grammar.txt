@@ -1,0 +1,37 @@
+Expr ::= Expr ‘,’ Expr | Expr1
+
+Expr1 ::= Number
+| String
+| ‘true’
+| ‘false’
+| ‘undefined’
+| Ident
+| Expr1 ‘+’ Expr1
+| Expr1 ‘-’ Expr1
+| Expr1 ‘*’ Expr1
+| Expr1 ‘%’ Expr1
+| Expr1 ‘<’ Expr1
+| Expr1 ‘===’ Expr1
+| Ident ‘=’ Expr1
+| Ident ‘(’ Exprs ‘)’
+| ‘[’ Exprs ‘]’
+| ‘[’ ArrayFor ‘]’
+| ‘(’ Expr ‘)’
+
+Exprs ::= ε
+| Expr1 CommaExprs
+
+CommaExprs ::= ε
+| ‘,’ Expr1 CommaExprs
+
+ArrayFor ::= ‘for’ ‘(’ Ident ‘of’ Expr1 ‘)’ ArrayCompr
+
+ArrayIf ::= ‘if’ ‘(’ Expr1 ‘)’ ArrayCompr
+
+ArrayCompr ::= Expr1
+| ArrayFor
+| ArrayIf
+
+Ident ::= (see below)
+Number ::= (see below)
+String ::= (see below)

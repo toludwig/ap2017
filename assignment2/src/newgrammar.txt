@@ -3,6 +3,7 @@ Expr ::= Expr1 ExprOpt
 
 ExprOpt ::= ',' Expr
 
+<<<<<<< HEAD
 Expr1 ::= Term1
 
 Term1 ::= Ident '=' Expr1
@@ -43,3 +44,9 @@ ArrayIf ::= 'if' '(' Expr1 ')' ArrayCompr
 ArrayCompr ::= Expr1
              | ArrayFor
              | ArrayIf
+=======
+Expr1 ::= Term
+        | Atom
+
+Term ::=
+>>>>>>> 68d7722ce03bf6abccf3ba1c231d7ff8627d9954
