@@ -6,7 +6,7 @@ ExprOpt ::= ',' Expr
 Expr1 ::= Term1
 
 Term1 ::= Ident '=' Expr1
-        | Term1
+        | Term2
 
 Term2 ::= Term3 '===' Expr1
         | Term3 '<' Expr1
