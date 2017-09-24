@@ -20,7 +20,7 @@ parseFile f = do
 symbol :: String -> Parser String
 symbol s = do
   spaces
-  c <- string s
+  c <- try (string s)
   return c
 
 -- Parses an expression
@@ -79,9 +79,13 @@ atomP = numberP
      <|> falseP
      <|> undefP
      <|> varP
-     <|> arrayForP
+     <|> (do
+       symbol "["
+       compr <- arrayForP
+       symbol "]"
+       return (Compr compr))
      <|> arrayP
-     <|> parenP
+     <|> parensP
 
 trueP :: Parser Expr
 trueP = do
@@ -103,9 +107,8 @@ varP = do
   name <- identP
   return (Var name)
 
-arrayForP :: Parser Expr
+arrayForP :: Parser ArrayCompr
 arrayForP = do
-  symbol "["
   symbol "for"
   symbol "("
   name <- identP
@@ -113,13 +116,43 @@ arrayForP = do
   expr <- expr1P
   symbol ")"
   array <- arrayCompP
-  symbol "]"
-  return (Compr (ArrayCompr (ACFor name expr array)))
+  return (ACFor name expr array)
 
 exprsP :: Parser [Expr]
 exprsP = expr1P `sepBy` (symbol ",")
 
+arrayCompP :: Parser ArrayCompr
+arrayCompP = arrayForP
+          <|> arrayIfP
+          <|> do
+            expr <- expr1P
+            return (ACBody expr)
 
+arrayIfP :: Parser ArrayCompr
+arrayIfP = do
+  symbol "if"
+  symbol "("
+  expr <- expr1P
+  symbol ")"
+  compr <- arrayCompP
+  return (ACIf expr compr)
+
+arrayP :: Parser Expr
+arrayP = do
+  symbol "["
+  exprs <- exprsP
+  symbol "]"
+  return (Array exprs)
+
+parensP :: Parser Expr
+parensP = do
+  symbol "("
+  expr <- exprP
+  symbol ")"
+  return expr
+
+stringP :: Parser Expr
+stringP = undefined
 
 
 keyWords :: [String]
