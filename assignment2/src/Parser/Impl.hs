@@ -17,85 +17,96 @@ parseFile f = do
   return (parseString s)
 
 -- Parser to strip whitespace and then parse a character
-symbol :: String -> Parser String
-symbol s = do
+symbolP :: String -> Parser String
+symbolP s = do
   spaces
   c <- string s
   return c
+
 
 -- Parses an expression
 exprP :: Parser Expr
 exprP = do
   spaces
-  (exprMultP <|> expr1P)
+  expr <- (try (exprMultP) <|> expr1P)
+  spaces
+  return expr
 
 -- Parses a Comma expression
 exprMultP :: Parser Expr
 exprMultP = do
   expr1 <- expr1P
-  symbol ","
+  symbolP ","
   expr2 <- exprP
   return (Comma expr1 expr2)
 
 -- Parses a single expression
 expr1P :: Parser Expr
-expr1P = assignP
-      <|> term2P
+expr1P = do
+  spaces
+  expr <- (try (assignP) <|> term2P)
+  return expr
 
 -- Parses an Assign expression
 assignP :: Parser Expr
 assignP = do
   name <- identP
-  symbol "="
+  symbolP "="
   expr <- expr1P
   return (Assign name expr)
 
 term2P :: Parser Expr
-term2P = binOpP "===" term3P
-      <|> binOpP "<" term3P
-      <|> term3P
+term2P = term3P `chainl1` compOpP
 
-binOpP :: String -> Parser Expr -> Parser Expr
-binOpP op p = do
-  expr1 <- p
-  s <- symbol op
-  expr2 <- expr1P
-  return (Call s [expr1,expr2])
+compOpP :: Parser (Expr -> Expr -> Expr)
+compOpP = do{ symbolP "==="; return (binOp "===")   }
+       <|> do{ symbolP "<"; return (binOp "<") }
+
+binOp :: String -> Expr -> Expr -> Expr
+binOp op expr1 expr2 = Call op [expr1,expr2]
 
 term3P :: Parser Expr
-term3P = binOpP "+" term4P
-      <|> binOpP "-" term4P
-      <|> term4P
+term3P = term4P `chainl1` addOpP
+
+addOpP :: Parser (Expr -> Expr -> Expr)
+addOpP = do{ symbolP "+"; return (binOp "+")   }
+      <|> do{ symbolP "-"; return (binOp "-") }
 
 term4P :: Parser Expr
-term4P = binOpP "*" atomP
-      <|> binOpP "%" atomP
-      <|> atomP
+term4P = atomP `chainl1` multOpP
+
+multOpP :: Parser (Expr -> Expr -> Expr)
+multOpP = do{ symbolP "*"; return (binOp "*")   }
+      <|> do{ symbolP "%"; return (binOp "%") }
 
 atomP :: Parser Expr
-atomP = numberP
-     <|> stringP
-     <|> trueP
-     <|> falseP
-     <|> undefP
-     <|> varP
-     <|> arrayForP
-     <|> arrayP
-     <|> parenP
+atomP = try numberP
+     <|> try stringP
+     <|> try trueP
+     <|> try falseP
+     <|> try undefP
+     <|> try varP
+     <|> try (do
+       symbolP "["
+       compr <- arrayForP
+       symbolP "]"
+       return (Compr compr))
+     <|> try arrayP
+     <|> parensP
 
 trueP :: Parser Expr
 trueP = do
-  symbol "true"
+  symbolP "true"
   return TrueConst
 
 falseP :: Parser Expr
 falseP = do
-  symbol "false"
+  symbolP "false"
   return FalseConst
 
 undefP :: Parser Expr
 undefP = do
-  symbol "undefined"
+  symbolP "undefined"
   return Undefined
 
 varP :: Parser Expr
@@ -103,45 +114,79 @@ varP = do
   name <- identP
   return (Var name)
 
-arrayForP :: Parser Expr
+arrayForP :: Parser ArrayCompr
 arrayForP = do
-  symbol "["
-  symbol "for"
-  symbol "("
+  symbolP "for"
+  symbolP "("
   name <- identP
-  symbol "of"
+  symbolP "of"
   expr <- expr1P
-  symbol ")"
+  symbolP ")"
   array <- arrayCompP
-  symbol "]"
-  return (Compr (ArrayCompr (ACFor name expr array)))
+  return (ACFor name expr array)
 
 exprsP :: Parser [Expr]
-exprsP = expr1P `sepBy` (symbol ",")
+exprsP = expr1P `sepBy` (symbolP ",")
 
+arrayCompP :: Parser ArrayCompr
+arrayCompP = arrayForP
+          <|> arrayIfP
+          <|> do
+            expr <- expr1P
+            return (ACBody expr)
 
+arrayIfP :: Parser ArrayCompr
+arrayIfP = do
+  symbolP "if"
+  symbolP "("
+  expr <- expr1P
+  symbolP ")"
+  compr <- arrayCompP
+  return (ACIf expr compr)
+
+arrayP :: Parser Expr
+arrayP = do
+  symbolP "["
+  exprs <- exprsP
+  symbolP "]"
+  return (Array exprs)
+
+parensP :: Parser Expr
+parensP = do
+  symbolP "("
+  expr <- exprP
+  symbolP ")"
+  return expr
+
+stringP :: Parser Expr
+stringP = fail "Want a string"
 
 
 keyWords :: [String]
 keyWords = ["for","of","true","false","undefined","if"]
 
 numberP :: Parser Expr
-numberP = negP
-       <|> posP
+numberP = do
+  spaces
+  (try negP <|> posP)
+
+posP :: Parser Expr
+posP =  do
+  ns <- many1 digit
+  if (length ns < 9)
+    then return (Number (read ns))
+    else fail "Number too long"
 
 negP :: Parser Expr
 negP = do
-  x <- symbol "-"
+  x <- string "-"
   ns <- many1 digit
   if (length ns < 9)
     then return (Number (read (x ++ ns)))
     else fail "Number too long"
 
-posP :: Parser Expr
-posP = undefined
-
 identP :: Parser String
-identP = do
+identP =  do
   spaces
   c <- letter
   cs <- many (alphaNum <|> satisfy ('_' ==))
