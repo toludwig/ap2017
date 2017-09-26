@@ -155,8 +155,30 @@ parensP = do
   symbolP ")"
   return expr
 
+
 stringP :: Parser Expr
-stringP = fail "Want a string"
+stringP = do
+  string "'" -- start of string
+  c <- many (try substringP)
+  string "'" -- end of string
+  return (String (concat c))
+
+substringP :: Parser String
+substringP = do
+  c1 <- anyChar
+  case [c1] of
+    "'"  -> fail "eos"   -- end of string reached
+    "\\" -> do           -- single backslash escapes the next char
+        c2 <- anyChar    -- which requires reading
+        case c2 of
+          '\n' -> return ""
+          '\\' -> return "\\"
+          '\'' -> return "'"
+          'n'  -> return "\n"
+          't'  -> return "\t"
+          _    -> return "unknown escape sequence"
+
+    _ -> return [c1]    -- otherwise, just return the char
 
 
 keyWords :: [String]
