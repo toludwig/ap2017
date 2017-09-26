@@ -51,14 +51,15 @@ substringP = do
 stringP :: Parser Expr
 stringP = do
   string "'" -- start of string
-  c <- many substringP -- end of string
+  c <- many (try substringP)
+  string "'" -- end of string
   return (String (concat c))
 
 substringP :: Parser String
 substringP = do
   c1 <- anyChar
   case [c1] of
-    "'"  -> return "FINISHED"   -- end of string reached, at this point stop, but HOW?
+    "'"  -> fail "eos"   -- end of string reached
     "\\" -> do           -- single backslash escapes the next char
         c2 <- anyChar    -- which requires reading
         case c2 of
@@ -68,4 +69,5 @@ substringP = do
           'n'  -> return "\n"
           't'  -> return "\t"
           _    -> return "unknown escape sequence"
+
     _ -> return [c1]    -- otherwise, just return the char
