@@ -9,7 +9,7 @@ import Text.Parsec.Combinator
 import Data.Char (ord)
 -- Runs the parser on a given string
 parseString :: String -> Either ParseError Expr
-parseString s = parse exprP "Impl.hs" s
+parseString s = parse (spaces *> exprP) "Impl.hs" s
 -- Parses a given file
 parseFile :: FilePath -> IO (Either ParseError Expr)
 parseFile f = do
@@ -19,17 +19,15 @@ parseFile f = do
 -- Parser to strip whitespace and then parse a character
 symbolP :: String -> Parser String
 symbolP s = do
-  spaces
   c <- string s
+  spaces
   return c
 
 
 -- Parses an expression
 exprP :: Parser Expr
 exprP = do
-  spaces
   expr <- (try (exprMultP) <|> expr1P)
-  spaces
   return expr
 
 -- Parses a Comma expression
@@ -43,7 +41,6 @@ exprMultP = do
 -- Parses a single expression
 expr1P :: Parser Expr
 expr1P = do
-  spaces
   expr <- (try (assignP) <|> term2P)
   return expr
 
@@ -166,9 +163,7 @@ keyWords :: [String]
 keyWords = ["for","of","true","false","undefined","if"]
 
 numberP :: Parser Expr
-numberP = do
-  spaces
-  (try negP <|> posP)
+numberP = (try negP <|> posP) <* spaces
 
 posP :: Parser Expr
 posP =  do
@@ -187,9 +182,9 @@ negP = do
 
 identP :: Parser String
 identP =  do
-  spaces
   c <- letter
   cs <- many (alphaNum <|> satisfy ('_' ==))
+  spaces
   if ((c:cs) `elem` keyWords)
     then fail ((c:cs) ++ " is a keyword")
     else return (c:cs)
