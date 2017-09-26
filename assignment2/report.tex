@@ -1,0 +1,105 @@
+\documentclass{article}
+\usepackage[utf8]{inputenc}
+\usepackage{listings}
+\usepackage{draftwatermark}
+\usepackage{gensymb}
+\usepackage{graphicx}
+\graphicspath{ {images/} }
+\SetWatermarkText{$\lambda$}
+\SetWatermarkScale{9}
+
+\title{Advanced Programming 2017\\Assignment 1}
+\author{
+Tom Jager\\
+\texttt{dgr418@alumni.ku.dk}
+\and
+Tobias Ludwig\\
+\texttt{fqj315@alumni.ku.dk}}
+
+\begin{document}
+
+\maketitle
+
+\section{New grammar}
+
+\begin{lstlisting}
+Expr ::= Term1 ExprOpt
+       | Term1
+
+ExprOpt ::= ',' Expr
+
+Term1 ::= Ident '=' Term1
+        | Term2
+
+Term2 ::= Term3 '===' Term3
+        | Term3 '<' Term3
+        | Term3
+
+Term3 ::= Term4 '+' Term4
+        | Term4 '-' Term4
+        | Term4
+
+Term4 ::= Atom '*' Atom
+        | Atom '%' Atom
+        | Atom
+
+Atom ::= Number
+       | String
+       | 'true'
+       | 'false'
+       | 'undefined'
+       | Ident
+       | '[' Exprs ']'
+       | '[' ArrayFor ']'
+       | '(' Expr ')'
+
+Exprs ::= $\epsilon$
+        | Expr1 CommaExprs
+
+CommaExprs ::= $\epsilon$
+             | ',' Expr1 CommaExprs
+
+ArrayFor ::= 'for' '(' Ident 'of' Expr1 ')' ArrayCompr
+
+ArrayIf ::= 'if' '(' Expr1 ')' ArrayCompr
+
+ArrayCompr ::= Expr1
+             | ArrayFor
+             | ArrayIf
+\end{lstlisting}
+
+We transformed the given grammar by hand in order to make the code easier.
+
+\begin{enumerate}
+ \item Abolishing \textbf{Left-recursion}: this is the case for the definition of \texttt{Expr} which consists of top-level instructions (again \texttt{Expr}s!)
+ seperated by comma. We can prevent the left-recursion by handling the case of a single vs. multiple inputs seperately and by introducing
+ a helper \texttt{ExprOpt} which calls \texttt{Expr} again circular.
+
+ \item \textbf{Precedence} is possible by defining the operators explicitly on different levels which we called \texttt{Term1} through \texttt{Term4} sticking to
+ the numbering in the task description where level 1 corresponds to the lowest precedence. Because the parser will work through the grammar top-down, we will parse those first.
+ This way we get a hierarchy of operators each of which can only be called with terms from lower levels.
+ 
+ \item \textbf{Associativity} comes into the game for for the arithmetic operators is 
+\end{enumerate}
+
+Further aspects:
+Type checking:
+- Ident 
+
+Note if our hierarchy were that simple we could not use lower precedence level (e.g. Assignment, Term1) in computations of higher precedence, e.g. in \texttt{3 + (x=2)}
+could not be parsed. However, we have a remedy for that. We include the \texttt{'(' Expr ')'} as an option on the \texttt{Atom} level thereby closing the circle to the top of the
+hierarchy. Hence a proper nesting of expressions is possible maintaining a new frame of precedence in every paranthesized expression.
+
+
+\section{Parsers for Number, Ident and String}
+
+\subsection{Number}
+Number is supposed to be a 9-digit signed integer. Parsec provides a function \texttt{count} which aids here.
+
+
+
+\section{The fuzzy gap between Parser and Interpreter}
+It is always a question of design how much interpreting is already done by the parser, with other words - where does Syntax end and Semantics start?
+For example we decided not to do any type-checking on the parser level. %TODO
+
+\end{document}
