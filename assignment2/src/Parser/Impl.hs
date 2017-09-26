@@ -1,4 +1,5 @@
-module Parser.Impl where
+module Parser.Impl (parseFile,
+                    parseString) where
 
 import SubsAst
 import Text.Parsec.Prim
