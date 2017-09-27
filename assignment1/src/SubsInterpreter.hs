@@ -147,44 +147,59 @@ putVar name val = modifyEnv (Map.insert name val)
 
 -- Function to retrieve the value of a variable from the current context
 
-getVar :: Ident -> SubsM Value
-getVar name = SubsM (\c -> case Map.lookup name (fst c) of
-  Nothing -> Left "Variable not initialised"
-  (Just x)  -> Right (x,fst c))
+getVar' :: Ident -> SubsM Value
+getVar' name = do
+  con <- getContext
+  val <- Map.lookup name (fst con)
+  case val of
+    Nothing  -> fail "Variable not initialised"
+    (Just x) -> return x
 
 -- Function to retrieve a primitive operation from the current context
 
-getFunction :: FunName -> SubsM Primitive
-getFunction name = SubsM (\c -> case Map.lookup name (snd c) of
-  Nothing  -> Left "Function name not initialised"
-  (Just x) -> Right (x,fst c))
+getFunction' :: FunName -> SubsM Primitive
+getFunction' name = do
+  con <- getContext
+  f <- Map.lookup name (snd con)
+  case f of
+    Nothing  -> fail "Function name not initialised"
+    (Just x) -> return x
+
+
+getContext :: SubsM Context
+getContext = SubsM (\c -> Right (c,fst c))
 
 -- function that takes an expression and evaluates it using a context
 evalExpr :: Expr -> SubsM Value
 -- Evaluates a basic expression, doesn't change the context and returns the correct value
-evalExpr (Number x)  = SubsM (\c -> Right (IntVal x,fst c))
-evalExpr (String s)  = SubsM (\c -> Right (StringVal s,fst c))
-evalExpr Undefined   = SubsM (\c -> Right (UndefinedVal,fst c))
-evalExpr TrueConst   = SubsM (\c -> Right (TrueVal,fst c))
-evalExpr FalseConst  = SubsM (\c -> Right (FalseVal,fst c))
+evalExpr (Number x)  = return (IntVal x)
+evalExpr (String s)  = return (StringVal s)
+evalExpr Undefined   = return UndefinedVal
+evalExpr TrueConst   = return TrueVal
+evalExpr FalseConst  = return FalseVal
 -- Evaluates arrays as ArrayVals
 evalExpr (Array exprs) = do
   vals <- mapM evalExpr exprs
   return (ArrayVal vals)
 evalExpr (Var name)  = getVar name
 -- Evaluates comprehensions keeping the original context
-evalExpr (Compr aComp) = SubsM (\c -> case runSubsM m c of
-  Left e    -> Left e
-  Right res -> Right (fst res,fst c)) where
-    m = evalCompr aComp
+evalExpr (Compr aComp) = do
+  arrVal <- evalCompr aComp
+  return arrVal
 -- Evaluates the function call expression
-evalExpr (Call name exprs) = SubsM (\c -> case runSubsM (mapM evalExpr exprs) c of
-  Left e          -> Left e
-  Right (vals,env) -> case runSubsM (getFunction name) (env,snd c) of
-    Left e           -> Left e
-    Right (prim,env') -> case prim vals of
-      Left e    -> Left e
-      Right val -> Right (val,env'))
+evalExpr (Call name exprs) = do
+  f <- getFunction name
+  vals <- mapM evalExpr exprs
+  case f vals of
+    Left e -> fail e
+    Right val -> return val
+--evalExpr (Call name exprs) = SubsM (\c -> case runSubsM (mapM evalExpr exprs) c of
+--  Left e          -> Left e
+--  Right (vals,env) -> case runSubsM (getFunction name) (env,snd c) of
+--    Left e           -> Left e
+--    Right (prim,env') -> case prim vals of
+--      Left e    -> Left e
+--      Right val -> Right (val,env'))
 
 evalExpr (Assign name expr) = do
    val <- evalExpr expr
@@ -219,7 +234,7 @@ evalCompr (ACIf expr comp) = do
     then evalCompr comp
     else if checkBool bool == 2
       then return (ArrayVal [])
-      else SubsM (const (Left "If must be supplied with a boolean expression"))
+      else fail "If must be supplied with a boolean expression"
 
 checkBool :: Value -> Int
 checkBool TrueVal  = 1
@@ -232,13 +247,13 @@ runExpr expr = case runSubsM (evalExpr expr) initialContext of
   Right res -> Right (fst res)
 
 succSubsM :: Int -> SubsM Int
-succSubsM n = SubsM (\c -> Right (n+1,fst c))
+succSubsM n = return (n+1)
 
 squareSubsM :: Int -> SubsM Int
-squareSubsM n = SubsM (\c -> Right (n*n,fst c))
+squareSubsM n = return (n*n)
 
 mult10SubsM :: Int -> SubsM Int
-mult10SubsM n = SubsM (\c -> Right (n*10,fst c))
+mult10SubsM n = return (n*10)
 
 assocEx1 :: Int -> SubsM Int
 assocEx1 n = do
