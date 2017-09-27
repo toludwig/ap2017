@@ -195,7 +195,6 @@ substringP :: Parser String
 substringP = do
   c1 <- anyChar
   case [c1] of
-    --"'"  -> fail "eos"      -- end of string reached
     "\\" -> do              -- single backslash escapes the next char
         c2 <- anyChar       -- which requires reading
         case c2 of
@@ -208,34 +207,6 @@ substringP = do
 
     _ -> return [c1]    -- otherwise, just return the char
 
-stringP :: Parser Expr
-stringP = do
-  string "'" -- start of string
-  c <- manyTill substringP endstringP
-  return (String (concat c))
-
-endstringP :: Parser ()
-endstringP = do
-  notFollowedBy (char '\\')
-  string "'"
-  return ()
-
-substringP :: Parser String
-substringP = do
-  c1 <- anyChar
-  case [c1] of
-    --"'"  -> fail "eos"      -- end of string reached
-    "\\" -> do              -- single backslash escapes the next char
-        c2 <- anyChar       -- which requires reading
-        case c2 of
-          '\n' -> return ""
-          '\\' -> return "\\"
-          '\'' -> return "'"
-          'n'  -> return "\n"
-          't'  -> return "\t"
-          _    -> fail "unknown escape sequence"
-
-    _ -> return [c1]    -- otherwise, just return the char
 
 keyWords :: [String]
 keyWords = ["for","of","true","false","undefined","if"]
