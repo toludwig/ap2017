@@ -1,5 +1,4 @@
 module Parser.Impl (parseString,
-                    identP,
                     ParseError) where
 
 import SubsAst
@@ -183,24 +182,58 @@ parensP = do
 stringP :: Parser Expr
 stringP = do
   string "'" -- start of string
-  c <- many (try substringP)
-  symbolP "'" -- end of string
+  c <- manyTill substringP endstringP
   return (String (concat c))
+
+endstringP :: Parser ()
+endstringP = do
+  notFollowedBy (char '\\')
+  string "'"
+  return ()
 
 substringP :: Parser String
 substringP = do
   c1 <- anyChar
   case [c1] of
-    "'"  -> fail "eos"   -- end of string reached
-    "\\" -> do           -- single backslash escapes the next char
-        c2 <- anyChar    -- which requires reading
+    --"'"  -> fail "eos"      -- end of string reached
+    "\\" -> do              -- single backslash escapes the next char
+        c2 <- anyChar       -- which requires reading
         case c2 of
           '\n' -> return ""
           '\\' -> return "\\"
           '\'' -> return "'"
           'n'  -> return "\n"
           't'  -> return "\t"
-          _    -> return "unknown escape sequence"
+          _    -> fail "unknown escape sequence"
+
+    _ -> return [c1]    -- otherwise, just return the char
+
+stringP :: Parser Expr
+stringP = do
+  string "'" -- start of string
+  c <- manyTill substringP endstringP
+  return (String (concat c))
+
+endstringP :: Parser ()
+endstringP = do
+  notFollowedBy (char '\\')
+  string "'"
+  return ()
+
+substringP :: Parser String
+substringP = do
+  c1 <- anyChar
+  case [c1] of
+    --"'"  -> fail "eos"      -- end of string reached
+    "\\" -> do              -- single backslash escapes the next char
+        c2 <- anyChar       -- which requires reading
+        case c2 of
+          '\n' -> return ""
+          '\\' -> return "\\"
+          '\'' -> return "'"
+          'n'  -> return "\n"
+          't'  -> return "\t"
+          _    -> fail "unknown escape sequence"
 
     _ -> return [c1]    -- otherwise, just return the char
 
@@ -233,12 +266,3 @@ identP =  do
   if ((c:cs) `elem` keyWords)
     then fail ((c:cs) ++ " is a keyword")
     else return (c:cs)
-
-
-callP :: Parser Expr
-callP = do
-  funName <- identP
-  symbolP "("
-  exprs <- exprsP
-  symbolP ")"
-  return (Call funName exprs)

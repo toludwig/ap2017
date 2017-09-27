@@ -22,7 +22,7 @@ Tobias Ludwig\\
 
 \section{New grammar}
 
-\begin{lstlisting}
+\begin{lstlisting}[mathescape]
 Expr ::= Term1 ExprOpt
        | Term1
 
@@ -96,10 +96,43 @@ hierarchy. Hence a proper nesting of expressions is possible maintaining a new f
 \subsection{Number}
 Number is supposed to be a 9-digit signed integer. Parsec provides a function \texttt{count} which aids here.
 
+\subsection{Whitespace and Comments}
+We wrote a function \texttt{symbolP} that is called after every terminal, parsing a certain String (using Parsec's \texttt{string}) and the following whitespace.
 
+Also comments are regarded as whitespace, which are initiated by double slash.
+So we wrote a unifying \texttt{discard :: Parser ()} function that just neglects its input, calling either the Parsec function \texttt{space} or our \texttt{commentP}.
 
-\section{The fuzzy gap between Parser and Interpreter}
-It is always a question of design how much interpreting is already done by the parser, with other words - where does Syntax end and Semantics start?
-For example we decided not to do any type-checking on the parser level. %TODO
+\begin{lstlisting}[mathescape]
+commentP :: Parser ()
+commentP = do
+  symbolP "//"
+  manyTill anyChar (string "$\backslash$n")
+  return ()
+\end{lstlisting}
+
+We wrote two non-automized tests to show whitespace is parsed and ignored.
+The one tests, if \texttt{1234z} fails, and succeeds.
+The other one tests, that whitespace in strings is not ignored, also succeeds.
+Another tests for the comments also succeeds if the input ends on \texttt{$\backslash$n}.
+
+\section{String}
+SubsScript Strings are enclosed in single quotes and can include escapes.
+We wrote a function \texttt{stringP} that parses the beginning of a string, the opening single quote,
+and then calling \texttt{substringP} as often as possible.
+\texttt{substringP} consumes a character and returns it, unless it was a backslash,
+in which case it consumes another character. Depending on what the escaped character is
+it returns an error ``unnown escape sequence'' (which is not displayed) or the valid
+corresponding Haskell escape sequence.
+
+For the end of the string we use a special parser because we don't want to stop at an
+escaped single quote which would be the case if used just \texttt{manyTill substringP string "'"}.
+Instead we have a function \texttt{endstringP} which ensures that no escaping backslash precedes the closing single quote.
+Sadly that part does not work.
+
+\subsection{String Testing}
+We tested \texttt{stringP} by writing a generator called \texttt{NoEscape} for Haskell-Strings including single quotes but without escapes.
+We prepend a single quote to the generated strings (because we want them to start with  and filter those which actually start by a single quote and include another one.
+However we realized that there 
+
 
 \end{document}
