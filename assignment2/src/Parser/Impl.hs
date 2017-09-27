@@ -6,7 +6,7 @@ import Text.Parsec.Char
 import Text.Parsec.Error
 import Text.Parsec.String
 import Text.Parsec.Combinator
-import Data.Char (ord)
+import Data.Char
 -- Runs the parser on a given string
 parseString :: String -> Either ParseError Expr
 parseString s = parse (spaces *> exprP) "Impl.hs" s
@@ -159,33 +159,34 @@ parensP = do
 stringP :: Parser Expr
 stringP = do
   string "'" -- start of string
-  c <- many (try substringP)
+  c <- many substringP
   string "'" -- end of string
   return (String (concat c))
 
 substringP :: Parser String
-substringP = do
-  c1 <- anyChar
-  case [c1] of
-    "'"  -> fail "eos"   -- end of string reached
-    "\\" -> do           -- single backslash escapes the next char
-        c2 <- anyChar    -- which requires reading
-        case c2 of
-          '\n' -> return ""
-          '\\' -> return "\\"
-          '\'' -> return "'"
-          'n'  -> return "\n"
-          't'  -> return "\t"
-          _    -> return "unknown escape sequence"
+substringP = fmap return nonEscapeP <|> escapeP
 
-    _ -> return [c1]    -- otherwise, just return the char
+nonEscapeP :: Parser Char
+nonEscapeP = do
+  noneOf "\\\'\n\t"
 
+escapeP :: Parser String
+escapeP = do
+  c1 <- char '\\'
+  c2 <- anyChar -- oneOf "\n\\'nt"  -- which requires reading
+  case [c2] of
+    "\n" -> return ""
+    "\\" -> return "\\"
+    "'"  -> return "'"
+    "n"  -> return "\n"
+    "t"  -> return "\t"
+    _    -> fail "unknown escape sequence"
 
 keyWords :: [String]
 keyWords = ["for","of","true","false","undefined","if"]
 
 numberP :: Parser Expr
-numberP = (try negP <|> posP) <* spaces
+numberP = try negP <|> posP <* spaces
 
 posP :: Parser Expr
 posP =  do
@@ -210,3 +211,12 @@ identP =  do
   if ((c:cs) `elem` keyWords)
     then fail ((c:cs) ++ " is a keyword")
     else return (c:cs)
+
+
+callP :: Parser Expr
+callP = do
+  funName <- identP
+  symbolP "("
+  exprs <- exprsP
+  symbolP ")"
+  return (Call funName exprs)

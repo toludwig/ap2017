@@ -8,16 +8,16 @@ Expr1 ::= Term1
 Term1 ::= Ident '=' Expr1
         | Term2
 
-Term2 ::= Term3 '===' Expr1
-        | Term3 '<' Expr1
+Term2 ::= Term2 '===' Term3
+        | Term2 '<' Term3
         | Term3
 
-Term3 ::= Term4 '+' Expr1
-        | Term4 '-' Expr1
+Term3 ::= Term3 '+' Term4
+        | Term3 '-' Term4
         | Term4
 
-Term4 ::= Atom '*' Expr1
-        | Atom '%' Expr1
+Term4 ::= Term4 '*' Atom
+        | Term4 '%' Atom
         | Atom
 
 Atom ::= Number
