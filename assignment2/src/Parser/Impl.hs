@@ -42,12 +42,12 @@ commentP = do
 
 -- Parses an expression
 exprP :: Parser Expr
-exprP = try exprMultP
+exprP = try commaP
      <|> expr1P
 
 -- Parses a Comma expression
-exprMultP :: Parser Expr
-exprMultP = do
+commaP :: Parser Expr
+commaP = do
   expr1 <- expr1P
   symbolP ","
   expr2 <- exprP
@@ -70,8 +70,8 @@ term2P :: Parser Expr
 term2P = term3P `chainl1` compOpP
 
 compOpP :: Parser (Expr -> Expr -> Expr)
-compOpP = do{ symbolP "==="; return (binOp "===")   }
-       <|> do{ symbolP "<"; return (binOp "<") }
+compOpP = do{ s <- symbolP "==="; return (binOp s)   }
+       <|> do{ s <- symbolP "<"; return (binOp s) }
 
 binOp :: String -> Expr -> Expr -> Expr
 binOp op expr1 expr2 = Call op [expr1,expr2]
@@ -80,15 +80,15 @@ term3P :: Parser Expr
 term3P = term4P `chainl1` addOpP
 
 addOpP :: Parser (Expr -> Expr -> Expr)
-addOpP = do{ symbolP "+"; return (binOp "+")   }
-      <|> do{ symbolP "-"; return (binOp "-") }
+addOpP = do{s <- symbolP "+"; return (binOp s)   }
+      <|> do{s <- symbolP "-"; return (binOp s) }
 
 term4P :: Parser Expr
 term4P = atomP `chainl1` multOpP
 
 multOpP :: Parser (Expr -> Expr -> Expr)
-multOpP = do{ symbolP "*"; return (binOp "*")   }
-      <|> do{ symbolP "%"; return (binOp "%") }
+multOpP = do{s <- symbolP "*"; return (binOp s)   }
+      <|> do{s <- symbolP "%"; return (binOp s) }
 
 atomP :: Parser Expr
 atomP = try numberP
