@@ -1,4 +1,6 @@
-module Parser.Impl where
+module Parser.Impl (parseString,
+                    identP,
+                    ParseError) where
 
 import SubsAst
 import Text.Parsec.Prim
@@ -9,26 +11,39 @@ import Text.Parsec.Combinator
 import Data.Char
 -- Runs the parser on a given string
 parseString :: String -> Either ParseError Expr
-parseString s = parse (spaces *> exprP) "Impl.hs" s
+parseString = parse (discards *> exprP <* eof) "Impl.hs"
 -- Parses a given file
 parseFile :: FilePath -> IO (Either ParseError Expr)
 parseFile f = do
   s <- readFile f
   return (parseString s)
 
--- Parser to strip whitespace and then parse a character
+-- Parser to
 symbolP :: String -> Parser String
 symbolP s = do
   c <- string s
-  spaces
+  discards
   return c
 
+discards :: Parser ()
+discards = do
+  many discard1
+  return ()
+
+discard1 :: Parser ()
+discard1 =
+  (space >> return ()) <|> commentP
+
+commentP :: Parser ()
+commentP = do
+  symbolP "//"
+  manyTill anyChar (string "\n")
+  return ()
 
 -- Parses an expression
 exprP :: Parser Expr
-exprP = do
-  expr <- (try (exprMultP) <|> expr1P)
-  return expr
+exprP = try exprMultP
+     <|> expr1P
 
 -- Parses a Comma expression
 exprMultP :: Parser Expr
@@ -40,9 +55,8 @@ exprMultP = do
 
 -- Parses a single expression
 expr1P :: Parser Expr
-expr1P = do
-  expr <- (try (assignP) <|> term2P)
-  return expr
+expr1P = try assignP
+      <|> term2P
 
 -- Parses an Assign expression
 assignP :: Parser Expr
@@ -79,10 +93,11 @@ multOpP = do{ symbolP "*"; return (binOp "*")   }
 atomP :: Parser Expr
 atomP = try numberP
      <|> try stringP
+     <|> try callP
+     <|> try varP
      <|> try trueP
      <|> try falseP
      <|> try undefP
-     <|> try varP
      <|> try (do
        symbolP "["
        compr <- arrayForP
@@ -90,6 +105,14 @@ atomP = try numberP
        return (Compr compr))
      <|> try arrayP
      <|> parensP
+
+callP :: Parser Expr
+callP = do
+  name <- identP
+  symbolP "("
+  exprs <- exprsP
+  symbolP ")"
+  return (Call name exprs)
 
 trueP :: Parser Expr
 trueP = do
@@ -116,7 +139,8 @@ arrayForP = do
   symbolP "for"
   symbolP "("
   name <- identP
-  symbolP "of"
+  string "of"
+  discard1
   expr <- expr1P
   symbolP ")"
   array <- arrayCompP
@@ -126,8 +150,8 @@ exprsP :: Parser [Expr]
 exprsP = expr1P `sepBy` (symbolP ",")
 
 arrayCompP :: Parser ArrayCompr
-arrayCompP = arrayForP
-          <|> arrayIfP
+arrayCompP = try arrayForP
+          <|> try arrayIfP
           <|> do
             expr <- expr1P
             return (ACBody expr)
@@ -159,34 +183,32 @@ parensP = do
 stringP :: Parser Expr
 stringP = do
   string "'" -- start of string
-  c <- many substringP
-  string "'" -- end of string
+  c <- many (try substringP)
+  symbolP "'" -- end of string
   return (String (concat c))
 
 substringP :: Parser String
-substringP = fmap return nonEscapeP <|> escapeP
+substringP = do
+  c1 <- anyChar
+  case [c1] of
+    "'"  -> fail "eos"   -- end of string reached
+    "\\" -> do           -- single backslash escapes the next char
+        c2 <- anyChar    -- which requires reading
+        case c2 of
+          '\n' -> return ""
+          '\\' -> return "\\"
+          '\'' -> return "'"
+          'n'  -> return "\n"
+          't'  -> return "\t"
+          _    -> return "unknown escape sequence"
 
-nonEscapeP :: Parser Char
-nonEscapeP = do
-  noneOf "\\\'\n\t"
-
-escapeP :: Parser String
-escapeP = do
-  c1 <- char '\\'
-  c2 <- anyChar -- oneOf "\n\\'nt"  -- which requires reading
-  case [c2] of
-    "\n" -> return ""
-    "\\" -> return "\\"
-    "'"  -> return "'"
-    "n"  -> return "\n"
-    "t"  -> return "\t"
-    _    -> fail "unknown escape sequence"
+    _ -> return [c1]    -- otherwise, just return the char
 
 keyWords :: [String]
 keyWords = ["for","of","true","false","undefined","if"]
 
 numberP :: Parser Expr
-numberP = try negP <|> posP <* spaces
+numberP = (try negP <|> posP) <* discards
 
 posP :: Parser Expr
 posP =  do
@@ -207,7 +229,7 @@ identP :: Parser String
 identP =  do
   c <- letter
   cs <- many (alphaNum <|> satisfy ('_' ==))
-  spaces
+  discards
   if ((c:cs) `elem` keyWords)
     then fail ((c:cs) ++ " is a keyword")
     else return (c:cs)
