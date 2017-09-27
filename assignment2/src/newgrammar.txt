@@ -1,11 +1,7 @@
-Expr ::= Expr1 ExprOpt
-       | Expr1
+Expr ::= Term1 ',' Expr
+       | Term1
 
-ExprOpt ::= ',' Expr
-
-Expr1 ::= Term1
-
-Term1 ::= Ident '=' Expr1
+Term1 ::= Ident '=' Term1
         | Term2
 
 Term2 ::= Term2 '===' Term3
