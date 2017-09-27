@@ -71,3 +71,12 @@ substringP = do
           _    -> return "unknown escape sequence"
 
     _ -> return [c1]    -- otherwise, just return the char
+
+-- Toms test clipboard
+
+testIdentP s =
+  identGood s ==> case parse identP "" s of
+    Right s' -> (s==s')
+    Left e   -> False
+
+identGood s = (s/= []) && C.isLetter (head s) && ((all (\c -> C.isAlphaNum c || (c == '_')) (tail s)) || (tail s == []))
