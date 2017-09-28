@@ -1,14 +1,11 @@
 \documentclass{article}
 \usepackage[utf8]{inputenc}
 \usepackage{listings}
-\usepackage{draftwatermark}
-\usepackage{gensymb}
-\usepackage{graphicx}
-\graphicspath{ {images/} }
-\SetWatermarkText{$\lambda$}
-\SetWatermarkScale{9}
+\usepackage{geometry}
+\usepackage{minted}
+\geometry{legalpaper, portrait, margin=1in}
 
-\title{Advanced Programming 2017\\Assignment 1}
+\title{Advanced Programming 2017\\Assignment 2}
 \author{
 Tom Jager\\
 \texttt{dgr418@alumni.ku.dk}
@@ -22,25 +19,26 @@ Tobias Ludwig\\
 
 \section{New grammar}
 
-\begin{lstlisting}
-Expr ::= Term1 ExprOpt
-       | Term1
+First we restructured the given BNF grammar a bit by hand.
+Note that the structure in our implementation may vary, e.g. with respect to the names of the non-terminals and to the concrete implementation (like the use of \texttt{chainl} for left-association, see below).
 
-ExprOpt ::= ',' Expr
+\begin{lstlisting}[mathescape=true]
+Expr ::= Term1 ',' Expr
+       | Term1
 
 Term1 ::= Ident '=' Term1
         | Term2
 
-Term2 ::= Term3 '===' Term3
-        | Term3 '<' Term3
+Term2 ::= Term2 '===' Term3
+        | Term2 '<' Term3
         | Term3
 
-Term3 ::= Term4 '+' Term4
-        | Term4 '-' Term4
+Term3 ::= Term3 '+' Term4
+        | Term3 '-' Term4
         | Term4
 
-Term4 ::= Atom '*' Atom
-        | Atom '%' Atom
+Term4 ::= Term4 '*' Atom
+        | Term4 '%' Atom
         | Atom
 
 Atom ::= Number
@@ -48,6 +46,7 @@ Atom ::= Number
        | 'true'
        | 'false'
        | 'undefined'
+       | Ident '(' Exprs ')'
        | Ident
        | '[' Exprs ']'
        | '[' ArrayFor ']'
@@ -68,38 +67,417 @@ ArrayCompr ::= Expr1
              | ArrayIf
 \end{lstlisting}
 
-We transformed the given grammar by hand in order to make the code easier.
-
 \begin{enumerate}
- \item Abolishing \textbf{Left-recursion}: this is the case for the definition of \texttt{Expr} which consists of top-level instructions (again \texttt{Expr}s!)
- seperated by comma. We can prevent the left-recursion by handling the case of a single vs. multiple inputs seperately and by introducing
- a helper \texttt{ExprOpt} which calls \texttt{Expr} again circular.
+ \item Abolishing \textbf{Left-recursion} where unnecessary: this is the case for the definition of \texttt{Expr} which consists of two top-level instructions (again \texttt{Expr}s!) seperated by comma. We can prevent the left-recursion by just making it right-recursive which is justified, because the comma separator is right-associative (see below).
 
- \item \textbf{Precedence} is possible by defining the operators explicitly on different levels which we called \texttt{Term1} through \texttt{Term4} sticking to
+ \item \textbf{Precedence} is possible by defining the operators explicitly on different levels which we call \texttt{Term1} through \texttt{Term4} sticking to
  the numbering in the task description where level 1 corresponds to the lowest precedence. Because the parser will work through the grammar top-down, we will parse those first.
- This way we get a hierarchy of operators each of which can only be called with terms from lower levels.
+ This way we get a hierarchy of operators each of which can only be called with terms from lower levels. 
+Note that, if our hierarchy were that simple we could not use lower precedence level (e.g. Assignment, Term1) in computations of higher precedence, e.g. in \texttt{3 + (x=2)} could not be parsed. However, we include the \texttt{'(' Expr ')'} as an option on the \texttt{Atom} level thereby closing the circle to the top of the hierarchy. Hence a proper nesting of expressions is possible maintaining a new frame of precedence in every paranthesized expression.
  
- \item \textbf{Associativity} comes into the game for for the arithmetic operators is 
+ \item \textbf{Associativity} for the arithmetic operators comes into the game because we have different levels of terms on either side of an operator. For example, if we want \texttt{+} (with precedence 3) to be left-associative, we allow terms of the same precedence only on the left side (making it left-recursive). Thus if there occurs another \texttt{+} on the left side this is evaluated first, and on the other hand, if a \texttt{+} occurs on the right, this can only be in parantheses. The same goes for \texttt{-/*/\^} and the opposite, right-recursiveness for the right-associative operators.
 \end{enumerate}
 
-Further aspects:
-Type checking:
-- Ident 
+\section{Parser Combinator Library}
 
-Note if our hierarchy were that simple we could not use lower precedence level (e.g. Assignment, Term1) in computations of higher precedence, e.g. in \texttt{3 + (x=2)}
-could not be parsed. However, we have a remedy for that. We include the \texttt{'(' Expr ')'} as an option on the \texttt{Atom} level thereby closing the circle to the top of the
-hierarchy. Hence a proper nesting of expressions is possible maintaining a new frame of precedence in every paranthesized expression.
+\subsection{Parsec}
+In our implementation for the SubScript parser, we decided to utilize the Parsec library. From researching online, we knew that the Parsec library was relatively fast pace and that as we were only parsing simple SubScript programs we would not need a library specifically built for high-speed performance parsing. Therefore, Parsec seemed an acceptable choice as it was relatively user friendly. It also comes equipped with a large range of combinators for parsing strings and spaces which we make use of to construct the parser for SubScript expressions. In particular, Parsec offers the \texttt{chainl1} parser, which allows us to preserve left associativity when parsing operations without falling into a loop due to left recursion.    
+
+\subsection{Try}
+Parsec also offers the \texttt{try} function, which attempts a parser on the input but ensures that if the parser fails then no input is consumed. This allows us to perform backtracking using Parsec. As the \texttt{<|>} operator in Parsec is left-biased, the parser will consume inputs when trying the first argument in an expression featuring \texttt{<|>}. This is problematic when checking for keywords, looking to see if the program features "," e.t.c. \texttt{Try} removes the bias from the alternative operation so that if the first parser fails, no input is consumed ensuring that an unaffected input is available for parsing on the right parser. This allows us to construct a parser with a similar structure to the grammar.
 
 
 \section{Parsers for Number, Ident and String}
+\subsection{Ident}
+Identifiers have to start with a letter followed by alphanumerics including underscores.
+\begin{lstlisting}[language=Haskell]
+identP :: Parser String
+identP = do
+  c <- letter
+  cs <- many (alphaNum <|> satisfy ('_' ==))
+  spaces
+  if ((c:cs) `elem` keyWords)
+    then fail ((c:cs) ++ " is a keyword")
+    else return (c:cs)
+\end{lstlisting}
+Testing these with QuickCheck yielded 30 passes.
 
 \subsection{Number}
-Number is supposed to be a 9-digit signed integer. Parsec provides a function \texttt{count} which aids here.
+A number may have at most 8 digits, optionally preceded by a single minus sign. This is done using different parsers for positive and negative numbers.
+\begin{lstlisting}[language=Haskell]
+numberP :: Parser Expr
+numberP = try negP <|> posP <* many spaces
+
+posP :: Parser Expr
+posP =  do
+  ns <- many1 digit
+  if (length ns < 9)
+    then return (Number (read ns))
+    else fail "Number too long"
+
+negP :: Parser Expr
+negP = do
+  x <- string "-"
+  ns <- many1 digit
+  if (length ns < 9)
+    then return (Number (read (x ++ ns)))
+    else fail "Number too long"
+\end{lstlisting}
+This also passed 100 QuickCheck test, producing a number $-10^9 < x< 10^9$.,
+
+\subsection{String}
+
+SubsScript Strings are enclosed in single quotes and can include escapes.
+We wrote a function \texttt{stringP} that parses the beginning of a string, the opening single quote,
+and then calling \texttt{substringP} as often as possible.
+\texttt{substringP} consumes a character and returns it, unless it was a backslash,
+in which case it consumes another character. Depending on what the escaped character is
+it returns an error ``unknown escape sequence'' (which is not displayed) or the valid
+corresponding Haskell escape sequence.
+
+For the end of the string we use a special parser because we don't want to stop at an
+escaped single quote which would be the case if used just \texttt{manyTill substringP string "'"}.
+Instead we have a function \texttt{endstringP} which ensures that no escaping backslash precedes the closing single quote.
+Sadly that part does not work.
+
+\begin{lstlisting}[language=Haskell]
+stringP :: Parser Expr
+stringP = do
+  string "'" -- start of string
+  c <- manyTill substringP endstringP
+  return (String (concat c))
+
+endstringP :: Parser ()
+endstringP = do
+  notFollowedBy (char '\\')
+  string "'"
+  return ()
+
+substringP :: Parser String
+substringP = do
+  c1 <- anyChar
+  case [c1] of
+    "\\" -> do              -- single backslash escapes the next char
+        c2 <- anyChar       -- which requires reading
+        case c2 of
+          '\n' -> return ""
+          '\\' -> return "\\"
+          '\'' -> return "'"
+          'n'  -> return "\n"
+          't'  -> return "\t"
+          _    -> fail "unknown escape sequence"
+
+    _ -> return [c1]    -- otherwise, just return the char
+\end{lstlisting}
+
+\subsection{String Testing}
+We tested \texttt{stringP} by writing a generator called \texttt{NoEscape} for Haskell-Strings including single quotes but without escapes.
+We prepend a single quote to the generated strings (because we want them to start with  and filter those which actually start by a single quote and include another one.
+However we realized that there is a bug in the test code itself, so \texttt{quickCheck stringP} will always fail after a few trials.
+
+But we do have some confidence that Strings are parsed rightly (at least in the unescaped version) as many handwritten tests and the online TA confirms.
+However the escape sequences are known issues. Escaping accepts any Haskell-escapes so for example not only \texttt{$\backslash$n} but also \texttt{$\backslash$a}
+which is illegal in subscript. The escaped single quote and the escaped newline do not work either. We had no more time to debug at this point.
+
+\section{Whitespace handling}
+Whitespace is always parsed after a token. It may follow each operator, atom and other symbol (like keywords, square brackets and parentheses).
+
+We wrote a function \texttt{symbolP} that is called after every terminal, parsing a certain String (using Parsec's \texttt{string}) and the following whitespace.
+Technically, it can be easily collected with the Parsec function \texttt{spaces} which skips zero or more whitespace characters.
+We also have to parse whitespace after Numbers in order to prevent something like \texttt{3s} or even \texttt{3.14} (we don't care about floats!).
+
+Also comments are regarded as whitespace, which are initiated by double slash.
+So we wrote a unifying \texttt{discard :: Parser ()} function that just neglects its input, calling either the Parsec function \texttt{space} or our \texttt{commentP}.
+
+\begin{lstlisting}
+commentP :: Parser ()
+commentP = do
+  symbolP "//"
+  manyTill anyChar (string "\n")
+  return ()
+\end{lstlisting}
+
+\subsection{Testing Whitespace}
+We wrote two non-automized tests to show whitespace is parsed and ignored.
+The one tests, if \texttt{1234z} fails, and succeeds.
+The other one tests, that whitespace in strings is not ignored, also succeeds.
+
+Another test \texttt{testComments} also succeeds if the input contains a comment ended by \texttt{$\backslash$n}. However there is one known issue from the online TA that the comments do not work as token separators, e.g. in For.
 
 
+\section{Operators}
+\subsection{Comma}
+As each SubScript program is treated as an expression, the parser for SubScript is the expression parser \texttt{exprP}. Programs can either be multiple expressions or a single expression. Programs with multiple expressions are formed using the \texttt{","} operator which has the weakest precedence and so will be applied last. This is implemented by trying to parse all other operators between expressions first and only if they all fail do we parse the \texttt{","}. If there is only a single expression and no \texttt{","} \texttt{exprP} performs the single expression parser \texttt{expr1P}. 
+\bigbreak
+Comma expressions are parsed using \texttt{commaP} a
+which parses and binds a single expression using \texttt{expr1P}. It then consumes the token \texttt{","} and then performs \texttt{exprP} binding its value. A parser returning a \texttt{Comma} expression constructed with the single expression and the other expression. As \texttt{exprP} is higher in the grammar of the language, it ensures that comma will parse the right hand side of the comma first and so is right associative.
 
-\section{The fuzzy gap between Parser and Interpreter}
-It is always a question of design how much interpreting is already done by the parser, with other words - where does Syntax end and Semantics start?
-For example we decided not to do any type-checking on the parser level. %TODO
+\begin{figure}[h!]
+\begin{minipage}{0.5\textwidth}
+\begin{lstlisting}[language=Haskell]
+exprP :: Parser Expr
+exprP = try commaP
+     <|> expr1P
+\end{lstlisting}
+\end{minipage}
+\begin{minipage}{0.5\textwidth}
+\begin{lstlisting}[language=Haskell]
+commaP :: Parser Expr
+commaP = do
+  expr1 <- expr1P
+  symbolP ","
+  expr2 <- exprP
+  return (Comma expr1 expr2)
+\end{lstlisting}
+\end{minipage}
+\end{figure}
+
+\subsection{Assign}
+The operation of next precedence is the \texttt{"="} operator for assignment. As such, the assign parser is placed next in the hierarchy. \texttt{expr1P} tries the assignment parser and if it fails it drops down to the next step in the hierarchy, the Term 2 parser. \texttt{assignP} parses and binds an identifier, then consumes the \texttt{"="} token followed by binding a single expression parsed by \texttt{"expr1P"}. A parser for \texttt{Assign} expressions constructed by the identifier and the expression is returned. To ensure that \texttt{"="} is right associative the expression on the right hand side is parsed by a parser higher in the hierarchy.
+
+\begin{figure}[h!]
+\begin{minipage}{0.5\textwidth}
+\begin{lstlisting}[language=Haskell]
+assignP :: Parser Expr
+assignP = do
+  name <- identP
+  symbolP "="
+  expr <- expr1P
+  return (Assign name expr)
+\end{lstlisting}
+\end{minipage}
+\begin{minipage}{0.5\textwidth}
+\begin{lstlisting}[language=Haskell]
+expr1P :: Parser Expr
+expr1P = try assignP
+      <|> term2P
+\end{lstlisting}
+\end{minipage}
+\end{figure}
+\subsection{Left Associative Operators}
+The remaining operators are all parsed in a similar manner. In order to maintain their precedence, the \texttt{"==="} and \texttt{"<"} parsers are implemented first, followed by \texttt{"+"} and \texttt{"-"}, followed by \texttt{"*"} and \texttt{"\%"}. Each operator is parsed in a similar way, the \texttt{chainl1} parser combinator is used to parse at least 1 occurrences of the tier below. \texttt{chainl1} ensures that each operation is parsed as left associative and avoids being stuck in a recursive loop with nothing being consumed. This combinator works by taking a parser for each term of the operation and another parser for a function that takes both terms and returns the resultant expression. This function parser \texttt{compOp}, \texttt{addOp} and \texttt{multOp} parse their corresponding operators and use \texttt{binOp} to return a function that constructs the appropriate \texttt{Call} expression from two other expressions. By ensuring that each term of \texttt{chainl1} is lower down in the hierarchy, it is ensured that operations lower down in the hierarchy are performed first.
+
+\begin{lstlisting}[language=Haskell]
+term2P :: Parser Expr
+term2P = term3P `chainl1` compOpP
+
+term3P :: Parser Expr
+term3P = term4P `chainl1` addOpP
+
+term4P :: Parser Expr
+term4P = atomP `chainl1` multOpP
+
+
+compOpP :: Parser (Expr -> Expr -> Expr)
+compOpP = do{ s <- symbolP "==="; return (binOp s)   }
+       <|> do{ s <- symbolP "<"; return (binOp s) }
+       
+addOpP :: Parser (Expr -> Expr -> Expr)
+addOpP = do{s <- symbolP "+"; return (binOp s)   }
+      <|> do{s <- symbolP "-"; return (binOp s) }
+      
+multOpP :: Parser (Expr -> Expr -> Expr)
+multOpP = do{s <- symbolP "*"; return (binOp s)   }
+      <|> do{s <- symbolP "%"; return (binOp s) }
+
+binOp :: String -> Expr -> Expr -> Expr
+binOp op expr1 expr2 = Call op [expr1,expr2]
+\end{lstlisting}
+
+\subsection{Operator Testing}
+Testing begins with \texttt{operatorTest}, where an example expression of each operator was tested. All operators passed. The testing values can be seen here and the tests repeated by calling \texttt{operatorTest} from Parser/Tests.hs 
+\begin{minted}[breaklines]{Haskell}
+opSubsList = ["5,x,4","x=6","4 < 5","4 === 5", "8+3","7-6","8*3","8%3"]
+
+opExprList = [Comma (Number 5) (Comma (Var "x") (Number 4)),Assign "x" (Number 6), Call "<" [Number 4,Number 5], Call "===" [Number 4,Number 5], Call "+" [Number 8, Number 3], Call "-" [Number 7, Number 6], Call "*" [Number 8, Number 3], Call "%" [Number 8, Number 3]]
+\end{minted}
+
+Next the precedence properties are tested. This is done by writing a single expression containing all the operators and ensuring that they bind in the correct order. The test passed and can be recreated by calling \texttt{opPrecTest}
+
+\begin{minted}[breaklines]{Haskell}
+precSubsList = ["1,x=2+3-4*5%6"]
+  
+precExprList = [Comma (Number 1) (Assign "x" (Call "-" [(Call "+" [Number 2,Number 3]),(Call "%" [(Call "*" [Number 4,Number 5]),Number 6])]))]
+\end{minted}
+
+Finally the associativity of each operator is tested. The test string in this case involves using each operation twice in an expression and ensuring they bind in the correct order. All tests passed and can be recreated using \texttt{opAssocTest}
+\begin{minted}[breaklines]{Haskell}
+assocSubsList = ["a,b,c","a=b=c","a+b+c","a-b-c","a*b*c","a%b%c"]
+
+assocExprList = [Comma (Var "a") (Comma (Var "b") (Var "c")), Assign "a" (Assign "b" (Var "c")), Call "+" [Call "+" [Var "a",Var "b"],Var "c"], Call "-" [Call "-" [Var "a",Var "b"],Var "c"], Call "*" [Call "*" [Var "a",Var "b"],Var "c"], Call "%" [Call "%" [Var "a",Var "b"],Var "c"]]
+
+\end{minted}
+\section{Atoms}
+\subsection{Simple Atoms}
+In our grammar, the expressions that do not rely on operations have been termed Atoms as they require no further division. These are all types of expressions other than \texttt{Comma}, \texttt{Assign} and arithmetic operations. The Atoms; \texttt{Number} and \texttt{String} are parsed by using the corresponding number and string parsers discussed earlier. \texttt{TrueConst}, \texttt{FalseConst} and \texttt{Undefined} are parsed by using \texttt{symbolP} to parse the tokens 'true', 'false' or 'undefined' and returning the corresponding expression.
+\bigbreak
+\texttt{Var} expressions are parsed by performing the \texttt{identP} to obtain the variable name and then returning the resultant \texttt{Var} expression. 
+\bigbreak
+Function calls are parsed in a similar manner but require a \texttt{"("} token followed by a list of single expressions separated by commas. This list is parsed and bound by \texttt{exprsP} (discussed in 5.3 Arrays). \texttt{callP} then consumes a \texttt{")"} token and returns a call constructed from the identifier and the list of expressions. As \texttt{"varP"} would parse correctly and halt after parsing an identifier, it is important to attempt \texttt{callP} first to check whether the identifier is for a function name or a variable name. 
+\bigbreak
+The last simple atom are the functions between parentheses which is dealt with by \texttt{parensP}. This parser consumes a \texttt{"("} token followed by binding an expression parsed by the \texttt{exprP} parser. It then consumes a closing \texttt{")"} token and returns the expression as a single expression.
+\begin{figure}[h!]
+\begin{minipage}{0.33\textwidth}
+\centering
+\begin{lstlisting}[language=Haskell]
+trueP :: Parser Expr
+trueP = do
+  symbolP "true"
+  return TrueConst
+
+falseP :: Parser Expr
+falseP = do
+  symbolP "false"
+  return FalseConst
+\end{lstlisting}
+\end{minipage}
+\begin{minipage}{0.33\textwidth}
+\centering
+\begin{lstlisting}[language=Haskell]
+undefP :: Parser Expr
+undefP = do
+  symbolP "undefined"
+  return Undefined
+
+varP :: Parser Expr
+varP = do
+  name <- identP
+  return (Var name)
+\end{lstlisting}
+\end{minipage}
+\begin{minipage}{0.33\textwidth}
+\centering
+\begin{lstlisting}[language=Haskell]
+callP :: Parser Expr
+callP = do
+  name <- identP
+  symbolP "("
+  exprs <- exprsP
+  symbolP ")"
+  return (Call name exprs)
+  
+parensP :: Parser Expr
+parensP = do
+  symbolP "("
+  expr <- exprP
+  symbolP ")"
+  return expr
+\end{lstlisting}
+\end{minipage}
+\end{figure}
+\\
+\subsection{Array Comprehensions}
+Array atoms can be split into two parts, ones constructed by array comprehensions and ones that are simple arrays. The ones constructed by array comprehensions parse a \texttt{"["} token and then extracts an \texttt{ArrayCompr} by performing the \texttt{arrayForP} parser. This uses \texttt{symbolP} to consume tokens for \texttt{"for"} and \texttt{"("}. Then an identifier is parsed and extracted. The token \texttt{"of"} is then parsed before a single expression is parsed and extracted. Finally, a \texttt{")"} token is parsed and \texttt{arrayCompP} is used to parse and bind an \texttt{ArrayCompr} value. \texttt{arrayForP} concludes by returning an \texttt{ACFor} value constructed from the identifier, single expression and the array comprehension.
+\bigskip
+\\
+The parser for array comprehensions, \texttt{arrayCompP}, simply attempts to parse a for comprehension, if comprehension or a body comprehension until one of them succeeds. Thus use of the try function prevents inputs from being consumed on a failing parser.
+\bigskip
+\\
+Lastly, \texttt{arrayIfP} operates by consuming tokens for \texttt{"if"} and \texttt{"("} followed by parsing and binding a single expression. It then consumes a \texttt{")"} token followed by parsing and binding another array comprehension. \texttt{arrayIfP} then returns an \texttt{ACIf} data type constructed from the single expression and the array comprehension.
+
+\begin{figure}[h!]
+\begin{minipage}{0.5\textwidth}
+\begin{lstlisting}[language=Haskell]
+arrayIfP :: Parser ArrayCompr
+arrayIfP = do
+  symbolP "if"
+  symbolP "("
+  expr <- expr1P
+  symbolP ")"
+  compr <- arrayCompP
+  return (ACIf expr compr)
+  
+arrayCompP :: Parser ArrayCompr
+arrayCompP = try arrayForP
+          <|> try arrayIfP
+          <|> do
+            expr <- expr1P
+            return (ACBody expr)
+\end{lstlisting}
+\end{minipage}
+\begin{minipage}{0.5\textwidth}
+\begin{lstlisting}[language=Haskell]
+arrayForP :: Parser ArrayCompr
+arrayForP = do
+  symbolP "for"
+  symbolP "("
+  name <- identP
+  string "of"
+  discard1
+  expr <- expr1P
+  symbolP ")"
+  array <- arrayCompP
+  return (ACFor name expr array)
+\end{lstlisting}
+\end{minipage}
+\end{figure}
+
+\subsection{Arrays}
+Arrays are parsed by \texttt{arrayP}. This function parses and binds a list of single expressions in between the \texttt{"["} and \texttt{"]"} tokens. The list of expressions is parsed by \texttt{exprsP} which uses the \texttt{sepBy} combinator to apply the \texttt{expr1P} 0 or more times to input separated by \texttt{","}. This returns a parser for a list of expressions.
+
+\begin{figure}[h!]
+\begin{minipage}{0.5\textwidth}
+\centering
+\begin{lstlisting}[language=Haskell]
+arrayP :: Parser Expr
+arrayP = do
+  symbolP "["
+  exprs <- exprsP
+  symbolP "]"
+  return (Array exprs)
+\end{lstlisting}
+\end{minipage}
+\begin{minipage}{0.5\textwidth}
+\centering
+\begin{lstlisting}[language=Haskell]
+exprsP :: Parser [Expr]
+exprsP = expr1P `sepBy` (symbolP ",")
+\end{lstlisting}
+\end{minipage}
+\end{figure}
+
+\subsection{\texttt{atomP}}
+Each of the above parsers are combined into a single parser for Atoms, \texttt{atomP}. This uses the try function and the \texttt{<|>} to attempt to apply each parser until one succeeds. The try function ensures that if a parser fails it does not consume any input so the stream is unchanged for the next parser to be attempted.
+\begin{figure}[h!]
+\begin{lstlisting}[language=Haskell]
+atomP :: Parser Expr
+atomP = try numberP
+     <|> try stringP
+     <|> try callP
+     <|> try varP
+     <|> try trueP
+     <|> try falseP
+     <|> try undefP
+     <|> try (do
+       symbolP "["
+       compr <- arrayForP
+       symbolP "]"
+       return (Compr compr))
+     <|> try arrayP
+     <|> parensP
+\end{lstlisting}
+\end{figure}
+
+\subsection{Atom Testing}
+To test the atoms I have written a list of SubScript expressions as strings and a list of their corresponding expressions. By running atomTest from the Parser/Tests.hs file you parse each SubScript string and compare the parsed version against the expression. All atoms passed their tests.
+\begin{lstlisting}[language=Haskell]
+List of SubScript expressions as strings
+["5764","'hello world'","Array(0,1,1)","xs","true","false","undefined",
+"[ for (x of xs) if (x === 5) x ]","['h','e','l']","(x=y,z=x)"]
+
+List of the corresponding Expressions
+[Number 5764,String "hello world",Call "Array" [(Number 0),(Number 1),(Number 1)],
+Var "xs", TrueConst, FalseConst, 
+Undefined, Compr (ACFor "x" (Var "xs") (ACIf (Call "===" [(Var "x"),(Number 5)]) 
+(ACBody (Var "x")))), Array [(String "h"),(String "e"), (String "l")], 
+Comma (Assign "x" (Var "y")) (Assign "z" (Var "x"))]
+\end{lstlisting}
+
+
+\section{Conclusion}
+We wrote a SubScript parser using Parsec which was rather straight forward because of the parser combinators already offered by the rich
+library.
+The parser is pretty much working, the only known issues (also reflected in the Online TA) are occurring in strings, especially the escaping whenever it differs from Haskell's defaut. Also, as a minor issue, separation of tokens by comments does not work.
+
 
 \end{document}

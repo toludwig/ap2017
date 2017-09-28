@@ -1,5 +1,4 @@
 module Parser.Impl (parseString,
-                    identP,
                     ParseError) where
 
 import SubsAst
@@ -8,7 +7,7 @@ import Text.Parsec.Char
 import Text.Parsec.Error
 import Text.Parsec.String
 import Text.Parsec.Combinator
-import Data.Char (ord)
+import Data.Char
 -- Runs the parser on a given string
 parseString :: String -> Either ParseError Expr
 parseString = parse (discards *> exprP <* eof) "Impl.hs"
@@ -183,26 +182,31 @@ parensP = do
 stringP :: Parser Expr
 stringP = do
   string "'" -- start of string
-  c <- many (try substringP)
-  symbolP "'" -- end of string
+  c <- manyTill substringP endstringP
   return (String (concat c))
+
+endstringP :: Parser ()
+endstringP = do
+  notFollowedBy (char '\\')
+  string "'"
+  return ()
 
 substringP :: Parser String
 substringP = do
   c1 <- anyChar
   case [c1] of
-    "'"  -> fail "eos"   -- end of string reached
-    "\\" -> do           -- single backslash escapes the next char
-        c2 <- anyChar    -- which requires reading
+    "\\" -> do              -- single backslash escapes the next char
+        c2 <- anyChar       -- which requires reading
         case c2 of
           '\n' -> return ""
           '\\' -> return "\\"
           '\'' -> return "'"
           'n'  -> return "\n"
           't'  -> return "\t"
-          _    -> return "unknown escape sequence"
+          _    -> fail "unknown escape sequence"
 
     _ -> return [c1]    -- otherwise, just return the char
+
 
 keyWords :: [String]
 keyWords = ["for","of","true","false","undefined","if"]
