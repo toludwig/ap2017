@@ -94,8 +94,8 @@ sub _                      = Left "- called with incorrect number of arguments"
 -- Primitive implementation of %
 
 modulus :: Primitive
-modulus [IntVal a, IntVal b] = Right (IntVal (a `mod` b))
 modulus [IntVal a, IntVal 0] = Left "mod by zero is not defined"
+modulus [IntVal a, IntVal b] = Right (IntVal (a `mod` b))
 modulus [_, _]               = Left "only Integers may be taken %"
 modulus _                    = Left "wrong number of arguments applied to %"
 
@@ -147,21 +147,19 @@ putVar name val = modifyEnv (Map.insert name val)
 
 -- Function to retrieve the value of a variable from the current context
 
-getVar' :: Ident -> SubsM Value
-getVar' name = do
+getVar :: Ident -> SubsM Value
+getVar name = do
   con <- getContext
-  val <- Map.lookup name (fst con)
-  case val of
+  case Map.lookup name (fst con) of
     Nothing  -> fail "Variable not initialised"
     (Just x) -> return x
 
 -- Function to retrieve a primitive operation from the current context
 
-getFunction' :: FunName -> SubsM Primitive
-getFunction' name = do
+getFunction :: FunName -> SubsM Primitive
+getFunction name = do
   con <- getContext
-  f <- Map.lookup name (snd con)
-  case f of
+  case Map.lookup name (snd con) of
     Nothing  -> fail "Function name not initialised"
     (Just x) -> return x
 
