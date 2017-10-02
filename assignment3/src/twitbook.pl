@@ -166,17 +166,18 @@ indifferent(G, X, Y) :-
   names(G, Todo),
   indifferent(G, Todo, X, Y).
 
+indifferent(_, [], _, _).
 indifferent(G, Todo, X, Y) :-
   not_likes(G, X, Y),              % X does not like Y himself
-  member(G, X, XFs),               % and X's friends are also
+  friends(G, X, XFs),              % and X's friends are also
   select1(X, Todo, Todo1),
   all_indifferent(G, Todo1, XFs, Y). % all indifferent to Y
 
 all_indifferent(_, _, [], _).
 all_indifferent(G, Todo, [H|T], Y) :-
-  member(Todo, H, _),             % check if H is still in Todos
-  indifferent(G, GTodo, H, Y),
-  all_indifferent(G, GTodo, T, Y).
+  elem(H, Todo),                 % check if H is still in Todos
+  indifferent(G, Todo, H, Y),
+  all_indifferent(G, Todo, T, Y).
 
 %-------------------------------------------------------------------------------
 % whole-graph properties
