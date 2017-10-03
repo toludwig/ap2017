@@ -43,8 +43,8 @@ select1(X, [H|T], [H|R]) :-
 % checks whether X and Y are different members of the network
 % by use of select; note that we need G for this!
 different(G, X, Y) :-
-  %member(G, X, _),
-  %member(G, Y, _),
+  member(G, X, _),
+  member(G, Y, _),
   select1(person(X, _), G, R),
   elem(person(Y, _), R).
 
@@ -60,9 +60,9 @@ filter(G, L1, L2, Intersect) :-
   filter1(G, L1, L2, [], Intersect).
 
 filter1(_, [], _, Acc, Acc).
-filter1(_, [H|T], L2, Acc, Res) :-
+filter1(G, [H|T], L2, Acc, Res) :-
   elem(H, L2),
-  filter1(H, T, L2, [H|Acc], Res).
+  filter1(G, T, L2, [H|Acc], Res).
 filter1(G, [H|T], L2, Acc, Res) :-
   not_in(G, H, L2),
   filter1(G, T, L2, Acc, Res).
@@ -113,6 +113,7 @@ all_dislike(G, [H|T], Y) :-
 %---------------------------------------
 
 friendly(G, X) :-
+  member(G, X, _),
   find_friends(G, G, X, [], Fs),
   likes_all(G, X, Fs).
 
@@ -135,6 +136,7 @@ likes_all(G, X, [H|T]) :-
 %---------------------------------------
 
 hostile(G, X) :-
+  member(G, X, _),
   find_friends(G, G, X, [], Fs),
   dislikes_all(G, X, Fs).
 
@@ -163,6 +165,7 @@ admires1(G, GTodo, X, Y) :-
 
 % indifferent needs again a cycle check
 indifferent(G, X, Y) :-
+  different(G, X, Y),
   names(G, Todo),
   indifferent(G, Todo, X, Y).
 
@@ -170,12 +173,12 @@ indifferent(_, [], _, _).
 indifferent(G, Todo, X, Y) :-
   not_likes(G, X, Y),              % X does not like Y himself
   friends(G, X, XFs),              % and X's friends are also
-  select1(X, Todo, Todo1),
-  all_indifferent(G, Todo1, XFs, Y). % all indifferent to Y
+  select1(X, Todo, Todo1),         % exclude this person from todos
+  filter(G, XFs, Todo1, FsTodo),  % filter the friends who are in todos
+  all_indifferent(G, Todo1, FsTodo, Y). % all indifferent to Y
 
 all_indifferent(_, _, [], _).
 all_indifferent(G, Todo, [H|T], Y) :-
-  elem(H, Todo),                 % check if H is still in Todos
   indifferent(G, Todo, H, Y),
   all_indifferent(G, Todo, T, Y).
 
