@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="generator" content="pandoc">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+  <meta name="author" content="By Ken Friis Larsen (kflarsen@diku.dk) and Niels G. W. Serup (ngws@metanohi.name)">
+  <title>In Cahoot in the Kaboose!</title>
+  <style type="text/css">code{white-space: pre;}</style>
+  <link href="data:text/css; charset=utf-8,%40font%2Dface%20%7B%0A%20%20font%2Dfamily%3A%20%27Dancing%20Script%27%3B%0A%20%20font%2Dstyle%3A%20normal%3B%0A%20%20font%2Dweight%3A%20400%3B%0A%20%20src%3A%20local%28%27Dancing%20Script%20Regular%27%29%2C%20local%28%27DancingScript%2DRegular%27%29%2C%20url%28https%3A%2F%2Ffonts%2Egstatic%2Ecom%2Fs%2Fdancingscript%2Fv8%2FDK0eTGXiZjN6yA8zAEyM2S5FJMZltoAAwO2fP7iHu2o%2Ettf%29%20format%28%27truetype%27%29%3B%0A%7D%0A%40font%2Dface%20%7B%0A%20%20font%2Dfamily%3A%20%27Oswald%27%3B%0A%20%20font%2Dstyle%3A%20normal%3B%0A%20%20font%2Dweight%3A%20400%3B%0A%20%20src%3A%20local%28%27Oswald%20Regular%27%29%2C%20local%28%27Oswald%2DRegular%27%29%2C%20url%28https%3A%2F%2Ffonts%2Egstatic%2Ecom%2Fs%2Foswald%2Fv14%2FY%5FTKV6o8WovbUd3m%5FX9aAA%2Ettf%29%20format%28%27truetype%27%29%3B%0A%7D%0A%40font%2Dface%20%7B%0A%20%20font%2Dfamily%3A%20%27Source%20Code%20Pro%27%3B%0A%20%20font%2Dstyle%3A%20normal%3B%0A%20%20font%2Dweight%3A%20400%3B%0A%20%20src%3A%20local%28%27Source%20Code%20Pro%27%29%2C%20local%28%27SourceCodePro%2DRegular%27%29%2C%20url%28https%3A%2F%2Ffonts%2Egstatic%2Ecom%2Fs%2Fsourcecodepro%2Fv6%2Fmrl8jkM18OlOQN8JLgasD9zbP97U9sKh0jjxbPbfOKg%2Ettf%29%20format%28%27truetype%27%29%3B%0A%7D%0A%40font%2Dface%20%7B%0A%20%20font%2Dfamily%3A%20%27Source%20Serif%20Pro%27%3B%0A%20%20font%2Dstyle%3A%20normal%3B%0A%20%20font%2Dweight%3A%20400%3B%0A%20%20src%3A%20local%28%27Source%20Serif%20Pro%27%29%2C%20local%28%27SourceSerifPro%2DRegular%27%29%2C%20url%28https%3A%2F%2Ffonts%2Egstatic%2Ecom%2Fs%2Fsourceserifpro%2Fv4%2FCeUM4np2c42DV49nanp55aqQQDHDiKO%2DLH8MFmRo0b0%2Ettf%29%20format%28%27truetype%27%29%3B%0A%7D%0A" rel="stylesheet">
+  <link href="data:text/css;charset=utf-8,body%20%7B%0Amargin%2Dtop%3A%201%2E0em%3B%0Abackground%2Dcolor%3A%20white%3B%0A%20font%2Dsize%3A%2013pt%3B%0Acolor%3A%20black%3B%0Awidth%3A%2090%25%3B%0Amargin%3A%200%20auto%3B%0A%7D%0Ahtml%20%7B%0Afont%2Dfamily%3A%20%22Source%20Serif%20Pro%22%2C%20Georgia%2C%20%22Times%20New%20Roman%22%2C%20serif%3B%0A%7D%0Ah2%2C%20h3%2C%20h4%2C%20h5%2C%20h6%20%7B%0Afont%2Dfamily%3A%20%22Oswald%22%2C%20Helvetica%2C%20Arial%2C%20sans%2Dserif%3B%0Afont%2Dweight%3A%20400%3B%0Acolor%3A%20%23313131%3B%0Aletter%2Dspacing%3A%20%2D%2E025rem%3B%0A%7D%0Acode%20%7B%0Afont%2Dfamily%3A%20%22Source%20Code%20Pro%22%2C%20Menlo%2C%20monospace%3B%0A%20background%2Dcolor%3A%20%23F0F3F3%3B%0A%7D%0Apre%20%7B%0Abackground%2Dcolor%3A%20%23F0F3F3%3B%0Apadding%3A%206px%3B%0Aword%2Dwrap%3A%20break%2Dword%3B%0Awhite%2Dspace%3A%20pre%2Dwrap%3B%0Afont%2Dfamily%3A%20%22Source%20Code%20Pro%22%2C%20Menlo%2C%20monospace%3B%0Aborder%3A%201px%20solid%20silver%3B%0A%7D%0Ah1%2Etitle%20%7B%0Afont%2Dfamily%3A%20%27Dancing%20Script%27%2C%20sans%2Dserif%3B%0Atext%2Dalign%3A%20center%3B%20font%2Dsize%3A%203%2E8em%3B%20color%3A%20black%3B%20margin%2Dbottom%3A%203px%3B%0A%7D%0Ah1%20%2Esmall%20%7B%20font%2Dsize%3A%200%2E4em%3B%20%7D%0Ah1%20a%20%7B%20text%2Ddecoration%3A%20none%20%7D%0Ah2%20%7B%20font%2Dsize%3A%201%2E5em%3B%20color%3A%20black%3B%20%7D%0Ap%2Eauthor%20%7B%20font%2Dsize%3A%201em%3B%20text%2Dalign%3A%20center%3B%20color%3A%20black%3B%20%7D%0Ap%2Edate%20%7B%20font%2Dsize%3A%201em%3B%20text%2Dalign%3A%20center%3B%20color%3A%20black%3B%20%7D%0Aa%20%7B%20color%3A%20black%3B%20%7D%0A%2Edescription%20%7B%20font%2Dsize%3A%201%2E2em%3B%20margin%2Dbottom%3A%2030px%3B%20margin%2Dtop%3A%2030px%3B%20font%2Dstyle%3A%20italic%3B%7D%0A%2Edownload%20%7B%20float%3A%20right%3B%20%7D%0A%0Ahr%20%7B%20border%3A%200%3B%20width%3A%2080%25%3B%20border%2Dbottom%3A%201px%20solid%20%23aaa%7D%0A%2Efooter%20%7B%20text%2Dalign%3Acenter%3B%20padding%2Dtop%3A30px%3B%20font%2Dstyle%3A%20italic%3B%20%7D%0Atable%20%7B%20border%2Dcollapse%3A%20collapse%20%7D%0Atd%20%7B%20border%3A%201px%20solid%20black%20%7D%0A" rel="stylesheet">
+  <!--[if lt IE 9]>
+    <script src="//cdnjs.cloudflare.com/ajax/libs/html5shiv/3.7.3/html5shiv-printshiv.min.js"></script>
+  <![endif]-->
+</head>
+<body>
+<header>
+<h1 class="title">In Cahoot in the Kaboose!</h1>
+<p class="author">By Ken Friis Larsen <code>(kflarsen@diku.dk)</code> and Niels G. W. Serup <code>(ngws@metanohi.name)</code></p>
+<p class="date">Last revision: October 2, 2017</p>
+</header>
+<nav id="TOC">
+<ul>
+<li><a href="#objective">Objective</a></li>
+<li><a href="#api">API</a></li>
+<li><a href="#how-to-get-started">How to get started</a></li>
+<li><a href="#anticipated-questions">Anticipated Questions</a></li>
+<li><a href="#hand-in-instructions">Hand-in Instructions</a></li>
+</ul>
+</nav>
+<h2 id="objective">Objective</h2>
+<p>The objective of this assignment is to gain hands-on programming experience with Erlang and to get an understanding of how to implement a simple server.</p>
+<p>The goal of the assignment is to implement the backend part of a Kahoot!-like service called <em>Kaboose!</em>. That is, a Kaboose! server is a central server where you create new <em>quiz rooms</em>. When you have created a quiz you need to add some questions to it before you can <em>play</em> the quiz. When your quiz is ready, you can open the quiz room for players. The players need to join the quiz before they can make guesses. To play a quiz there needs to be exactly one <em>conductor</em> and a number of <em>players</em>.</p>
+<p>The play of a quiz is that the conductor makes the questions active in turn, and then the players’ guesses are collected. After each question, each player is awarded points based on the correctness of the answer, and the swiftness of reply.</p>
+<p>Points are calculated similar as in Kahoot!:</p>
+<ul>
+<li>All questions offer 1000 points if you respond correctly in under 0.5 seconds and the question is active.</li>
+<li>If you answer correctly while the question is active but after 0.5 seconds, you get 500 points.</li>
+</ul>
+<h2 id="api">API</h2>
+<p>Implement a module <code>kaboose</code> with the following API:</p>
+<ul>
+<li><p><code>start()</code> for starting a Kaboose! server. Returns <code>{ok, Server}</code> on success or <code>{error, Reason}</code> if some error occurred.</p></li>
+<li><p><code>get_a_room(Server)</code> for creating a new quiz room. Returns <code>{ok, Room}</code> and creates the room, where <code>Room</code> is an opaque datatype used to identify the room; or returns <code>{error, Reason}</code> if some error occurred.</p>
+<p>That <code>Room</code> is opaque, means that you should decide what to return, and any client of the API shouldn’t depend on any particular representation.</p></li>
+<li><p><code>add_question(Room, {Description, Answers})</code> for adding a question to the quiz in <code>Room</code>. <code>Description</code> should be a string; <code>Answers</code> should be a non-empty list of answers, where each answer is either a string or a pair on the form <code>{correct, Text}</code> where <code>Text</code> is a string, the latter form is used for marking which answers are correct (there should be at least one, but there can be multiple correct answers).</p>
+<p>Returns either <code>ok</code> or <code>{error, Reason}</code> if the arguments were on the wrong form.</p></li>
+<li><p><code>get_questions(Room)</code> for getting the current questions in the room. Returns a list of tuples on the form given as the second argument to <code>add_question</code>. The questions should be returned in the order that they were added, that is, the question that was added first should be the head of the list.</p>
+<p>In the (rare?) case where there have been concurrent processes calling <code>add_question</code> there are multiple correct orders because of data races.</p></li>
+<li><p><code>play(Room)</code> for starting the quiz in <code>Room</code>. Returns the tuple <code>{ActiveRoom, CRef}</code> where <code>ActiveRoom</code> is an opaque type. The process calling this function is then the conductor for the new active quiz. When the quiz starts there is no active question.</p>
+<p>The <code>CRef</code> is used for communicating from the <code>ActiveRoom</code> to the conductor while the quiz is active. A number of messages can be sent to the conductor; these messages will all have the form <code>{CRef, Msg}</code>, where <code>Msg</code> is one of:</p>
+<ol type="a">
+<li><code>{player_joined, Nick, Active}</code> for informing the conductor that the player <code>Nick</code> has joined, thus bringing the number of players in the room up to <code>Active</code>.</li>
+<li><code>{player_left, Nick, Active}</code> (which brings the number of players in the room <em>down</em> to <code>Active</code>).</li>
+</ol>
+<p>The purpose of the conductor is to progress the quiz by communicating with the <code>ActiveRoom</code>; like examiners, different conductors can have different ideas of how much time each question gets, how players get to know the questions, and how the scores are presented.</p></li>
+<li><p><code>next(ActiveRoom)</code> used by the conductor for advancing the quiz to the next question, and making that question active. Returns either <code>{ok, {Description, Answers}}</code> if the process calling the function is the conductor, where <code>Description</code> and <code>Answers</code> are for the next question (and thus have the same types as in <code>add_question</code>); or <code>{error, who_are_you}</code> if the calling process is not the conductor; or <code>{error, has_active_question}</code> if there is already a currently active question.</p></li>
+<li><p><code>timesup(ActiveRoom)</code> used by the conductor for making the current question inactive. Returns either:</p>
+<ul>
+<li><p><code>{ok, Dist, LastQ, Total, Final}</code> with information about the last question, where: <code>Dist</code> is a list of integers giving the distribution of guesses on the different possible answers (thus it has the same length as the number of possible answers for the question); <code>LastQ</code> and <code>Total</code> describe the score after the last question, both are <a href="http://erlang.org/doc/man/maps.html"><code>maps</code></a> mapping player names to points (following the rules laid out in the Objective section), for the last question and for the total standing respectively; and <code>Final</code> is a Boolean that is <code>true</code> if it was the final question of the quiz, and <code>false</code> otherwise. If it was the final question, then the quiz is no longer active.</p></li>
+<li><p><code>{error, Reason}</code> if some error occurred. <code>Reason</code> should be <code>no_question_asked</code> if the room is active, but there is no active question; it should be <code>nice_try</code> if the calling process is not the conductor.</p></li>
+</ul></li>
+<li><p><code>join(ActiveRoom, Nick)</code> called by a player process to join the active quiz using the nickname <code>Nick</code>. Returns <code>{ok, Ref}</code> if the player is considered joined, the <code>Ref</code> should be used for future communication from the player to the active room. Otherwise, if the nickname <code>Nick</code> is taken the function should return <code>{error, Nick, is_taken}</code>. The <code>ActiveRoom</code> should inform the conductor of the new player.</p></li>
+<li><p><code>leave(ActiveRoom, Ref)</code> called by a player process to leave the active room. The <code>ActiveRoom</code> should inform the conductor of departure the player.</p></li>
+<li><p><code>rejoin(ActiveRoom, Ref)</code> called by a player process if they change their mind and want to rejoin the fun. The <code>ActiveRoom</code> should inform the conductor of the happy reunion.</p></li>
+<li><p><code>guess(ActiveRoom, Ref, Index)</code> called by a player for making a guess that the correct answer to the current active question is <code>Index</code>. Thus, <code>Index</code> should be larger than or equal to one.</p>
+<p>If there is no active question, or the <code>Index</code> is out of range, then the guess is ignored.</p></li>
+</ul>
+<h2 id="how-to-get-started">How to get started</h2>
+<ul>
+<li><p>Start by implementing a client program that starts a Kaboose! server, makes a new quiz room, adds three questions, and finally asks to get them back. Now you have the first simple test for your server (which will not be able to run until you actually implement the <code>kaboose</code> module).</p>
+<p>Bonus points if your quiz is about the Advanced Programming course, and double bonus points if the questions contain puns (or other silliness).</p></li>
+<li><p>Then make a skeleton for the <code>kaboose</code> module with dummy implementations for all functions in the API, and implement the parts of the <code>kaboose</code> module that correspond to your simple test in the previous point.</p></li>
+<li><p>After that, then implement enough of the <code>kaboose</code> module so that a conductor can play a quiz without any players (calling <code>next</code> and <code>timesup</code> until there are no more questions), and test your code.</p></li>
+</ul>
+<h2 id="anticipated-questions">Anticipated Questions</h2>
+<ul>
+<li><p><strong>Q:</strong> Can you have multiple active rooms based on the same room?</p>
+<p><strong>A:</strong> Yes, and they should not influence each other.</p></li>
+<li><p><strong>Q:</strong> Can you add questions to a room while there is an active room?</p>
+<p><strong>A:</strong> Yes, but that will have no influence on the active room(s).</p></li>
+<li><p><strong>Q:</strong> There is too much to do. Can I pass even if I don’t complete everything?</p>
+<p><strong>A:</strong> Yes, if you make a tasteful selection of what to leave out, document it clearly, and thoroughly test the existing parts.</p></li>
+<li><p><strong>Q:</strong> What happen if players try to communicate with an inactive room?</p>
+<p><strong>A:</strong> They shouldn’t.</p></li>
+</ul>
+<h2 id="hand-in-instructions">Hand-in Instructions</h2>
+<p>You should hand in two things:</p>
+<ol type="1">
+<li><p>A short report, <code>report.pdf</code>, explaining the main design of your code, and <strong>an assessment</strong> of your implementation, including what this assessment is based on.</p>
+<p>In this assignment, it is of particular interest that you discuss how you deal with players who send guesses while there are no active questions.</p>
+<p>Also, if you have thoughts on how the API could be improved, feel free to share them.</p></li>
+<li><p>A ZIP archive <code>src.zip</code>, containing one directory <code>src</code>, containing your source code and tests. Your implementation of the <code>kaboose</code> module (thus in a file called <code>kaboose.erl</code>) and the code you have used to test your module in other file(s).</p></li>
+</ol>
+<p>Make sure that you adhere to the types of the API, and test that you do.</p>
+<p>To keep your TA happy, follow these simple rules:</p>
+<ol type="1">
+<li>The Erlang compiler, with the parameter <code>-Wall</code>, should not yield any errors or warnings for your code.</li>
+<li>You should comment your code properly, especially if you doubt its correctness, or if you think there is a more elegant way to write a certain piece of code. A good comment should explain your ideas and provide insight.</li>
+<li>Adhere to the restrictions set in the assignment text, and make sure that you export all of the requested API (even if some functions only have a dummy implementation).</li>
+<li>Describe clearly what parts of the assignment you have solved.</li>
+</ol>
+<hr />
+<p>End of assignment text.</p>
+</body>
+</html>
