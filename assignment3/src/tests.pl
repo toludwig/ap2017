@@ -90,3 +90,9 @@ indif_err(G1,G2) :-
   indifferent(G1, clarke, barry);
   indifferent(G1, oliver, clark);
   indifferent(G2, supergirl, green_arrow).
+
+a1([(kara,supergirl),(bruce,batman),(barry,flash),(clark,superman),(oliver,green_arrow)]).
+
+whole_test(G1,G2,A1) :-
+  same_world(G1,G2,A),
+  equal(A,A1).
