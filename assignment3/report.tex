@@ -1,7 +1,9 @@
 \documentclass{article}
 \usepackage[utf8]{inputenc}
 \usepackage{listings}
-\usepackage{gensymb}
+\usepackage{geometry}
+
+\geometry{legalpaper, portrait, margin=1in}
 
 \title{Advanced Programming 2017\\Assignment 3}
 \author{
@@ -14,13 +16,476 @@ Tobias Ludwig\\
 \begin{document}
 
 \maketitle
+\section{Warm Up}
+\subsection{Likes}
+\texttt{likes(G,X,Y)} is a simple predicate that is used to determine whether person \texttt{Y} is inside person \texttt{X}'s friend list. \texttt{likes} uses the helper functions \texttt{equal} and \texttt{elem}. \texttt{equal} is a very simple predicate that takes two arguments and passes only if they are the same.
+\bigbreak
+\texttt{equal(X,X).}
+\bigbreak
+\texttt{elem} takes an element and a list and checks if the first element of the list is the same as the given element. If it isn't it discards the head of the list and performs \texttt{elem} on the rest of the list.
+\begin{lstlisting}[language=Prolog]
+elem(E, [E|_]).
+elem(E, [_|T]) :-
+  elem(E, T).
+\end{lstlisting}
 
-\section{Helpers}
+\texttt{likes} is implemented with two clauses. The first checks if the first element of the graph is \texttt{X} and if so binds variable \texttt{L} to be their friends list through the use of \texttt{equal}. It then checks if \texttt{Y} is inside list \texttt{L} through the use of equal. If both checks pass, it returns true. If it is not true the seconds clause is performed which is a simple recursive call. Here \texttt{likes} is performed again but without the first element of \texttt{G}, allowing us to iterate through the graph. 
+\subsection{Dislikes}
+\texttt{dislikes(G, X, Y)} is a predicate that takes a graph and two people \texttt{X} and \texttt{Y} and returns true if \texttt{Y} is not in \texttt{X}'s friends list but \texttt{X} is still aware of \texttt{Y}. This rule uses the helper rules \texttt{different}, \texttt{member} and \texttt{not\_in}.
+\bigbreak
+\texttt{different(G, X, Y)} is a goal that returns true if \texttt{X} and \texttt{Y} are different people. It does this by using \texttt{select1} to remove person \texttt{X} from the graph. It then checks if person \texttt{Y} is still part of the graph. If it is not then \texttt{X} and \texttt{Y} were the same people and \texttt{different} returns false, otherwise it returns true.
+\begin{lstlisting}[language=Prolog]
+different(G, X, Y) :-
+  member(G, X, _),
+  member(G, Y, _),
+  select1(person(X, _), G, R),
+  elem(person(Y, _), R).
+\end{lstlisting}
+\texttt{member(G,X,XFs)} is a goal that takes a person \texttt{X} and their list of friends, \texttt{XFs} and checks if the \texttt{person} constructed from that, is in the graph. It can be used to retrieve someone's list of friends.
+\begin{lstlisting}[language=Prolog]
+member(G, X, XFs) :-
+  elem(person(X, XFs), G).
+\end{lstlisting}
+\texttt{not\_in(G,X,L)} is a goal that checks if person \texttt{X} is in a list of people \texttt{L}. It does this by iterating through the list of people and ensuring that is is \texttt{different} to each member.
+\begin{lstlisting}[language=Prolog]
+not_in(_, _, []).
+not_in(G, X, [H|T]) :-
+  different(G, X, H),
+  not_in(G, X, T).
+\end{lstlisting}
+\texttt{dislikes(G,X,Y)} is true only if \texttt{Y} likes \texttt{X}, is \texttt{different} to \texttt{X}, and is \texttt{not\_in} \texttt{X}'s friends list. \texttt{X}'s friends list is extracted by using \texttt{member}.
+\begin{lstlisting}[language=Prolog]
+dislikes(G, X, Y) :-
+  likes(G, Y, X),
+  different(G, X, Y),
+  member(G, X, XFs),
+  not_in(G, Y, XFs).
+\end{lstlisting}
+\subsection{Testing}
+\texttt{Likes} and \texttt{dislikes} are tested through the use of the query\texttt{?- g1(G), warmup\_test(G)} in \texttt{tests.pl}. This checks to ensure that the right people like and dislike the correct people in test graph \texttt{G} and that erroneous tests do not succeed.
+\begin{figure}[h!]
+\begin{minipage}{0.33\textwidth}
+\begin{lstlisting}[language=Prolog]
+warmup_test(G) :-
+  warm_test(G),
+  \+(warm_err(G)).
+\end{lstlisting}
+\end{minipage}
+\begin{minipage}{0.33\textwidth}
+\begin{lstlisting}[language=Prolog]
+warm_test(G) :-
+  likes(G,kara,barry),
+  likes(G,kara,clark),
+  dislikes(G,kara,oliver).
+\end{lstlisting}
+\end{minipage}
+\begin{minipage}{0.33\textwidth}
+\begin{lstlisting}[language=Prolog]
+warm_err(G) :-
+  dislikes(G,kara,clark);
+  likes(G,oliver,bruce).
+\end{lstlisting}
+\end{minipage}
+\end{figure}
 \section{Local Relations}
+
+%Note that bruce is both friendly and hostile, although neither is really true, 
+%but this is consistent with the task.
+\subsection{Popular}
+\texttt{popular(G, X)} is a predicate that determines if a person \texttt{X} is liked by everyone in their friends list. It involves the use of the helper goal \texttt{all\_like(G, YFs, Y)}. This helper predicate determines if each person in a friends list \texttt{YFs} likes person \texttt{Y}. \texttt{popular} simply checks if a person \texttt{X} is a member of the graph and uses it to extract their friends list. It then performs \texttt{all\_like} on \texttt{X} and their friends list.
+\begin{figure}[h!]
+\begin{minipage}{0.5\textwidth}
+\begin{lstlisting}[language=Prolog]
+popular(G, X) :-
+  member(G, X, XFs),
+  all_like(G, XFs, X).
+\end{lstlisting}
+\end{minipage}
+\begin{minipage}{0.5\textwidth}
+\begin{lstlisting}[language=Prolog]
+all_like(_, [], _).
+all_like(G, [H|T], Y) :-
+  likes(G, H, Y),
+  all_like(G, T, Y).
+\end{lstlisting}
+\end{minipage}
+\end{figure}
+\subsection{Outcast}
+The predicate to determine if everyone in someone's friends list dislikes them, is called \texttt{outcast}. \texttt{outcast(G, X)} performs in a similar way to \texttt{popular} where \texttt{member} is used to check that person \texttt{X} is part of graph \texttt{G} and extract their friends list. Then \texttt{all\_dislike} is used to check if each member of the friends list "dislikes" \texttt{X}.
+\begin{figure}[h!]
+\begin{minipage}{0.5\textwidth}
+\begin{lstlisting}[language=Prolog]
+outcast(G, X) :-
+  member(G, X, XFs),
+  all_dislike(G, XFs, X).
+\end{lstlisting}
+\end{minipage}
+\begin{minipage}{0.5\textwidth}
+\begin{lstlisting}[language=Prolog]
+all_dislike(_, [], _).
+all_dislike(G, [H|T], Y) :-
+  dislikes(G, H, Y),
+  all_dislike(G, T, Y).
+\end{lstlisting}
+\end{minipage}
+\end{figure}
+
+\subsection{Friendly}
+\texttt{friendly(G, X)} is used to determine if \texttt{X}'s friends list contains every person who likes \texttt{X}. This is done with two clauses, \texttt{find\_friends} and \texttt{likes\_all}. \texttt{find\_friends(G, G, X, [], Fs} is used to extract a list of people who like \texttt{X}. Its arguments are two instances of a graph, the person \texttt{X}, an empty accumulator which holds the people who like \texttt{X} and the resultant list of people. It does this by extracting each person \texttt{Y} and their friends list from the graph by using \texttt{equal}. It then uses \texttt{elem} to check if \texttt{X} is a member of their friends list. If it is, then \texttt{find\_friends} is called again with the tail of the graph and with \texttt{Y} added to the accumulator. If not, \texttt{not\_in} is used to check that they are not in the friends list and\texttt{find\_friends} is called on the tail but with the accumulator unchanged. Once all elements in the graph have been checked, \texttt{find\_friends} copies the accumulator to the result.
+\bigbreak
+\texttt{likes\_all(G, X, Fs)} is a predicate similar to \texttt{all\_likes} except each member of the friends list is checked to see if \texttt{X} likes them. Finally, \texttt{friendly} used \texttt{find\_friends} to extract the people who like \texttt{X} and then use \texttt{likes\_all} to check if he likes all of them.
+\begin{figure}[h!]
+\begin{minipage}{0.6\textwidth}
+\begin{lstlisting}[language=Prolog]
+find_friends(_, [], _, Acc, Acc).
+find_friends(G, [H|T], X, Acc, Res) :-
+  equal(H, person(Y, YFs)),
+  elem(X, YFs),                        
+  find_friends(G, T, X, [Y|Acc], Res). 
+find_friends(G, [H|T], X, Acc, Res) :-
+  equal(H, person(_, YFs)),
+  not_in(G, X, YFs),                   
+  find_friends(G, T, X, Acc, Res).     
+\end{lstlisting}
+\end{minipage}
+\begin{minipage}{0.4\textwidth}
+\begin{lstlisting}[language=Prolog]
+friendly(G, X) :-
+  find_friends(G, G, X, [], Fs),
+  likes_all(G, X, Fs).
+
+likes_all(_, _, []).
+likes_all(G, X, [H|T]) :-
+  likes(G, X, H),
+  likes_all(G, X, T).
+\end{lstlisting}
+\end{minipage}
+\end{figure}
+
+\subsection{Hostile}
+\texttt{hostile(G, X)} behaves in an opposite way to \texttt{friendly}, it checks whether a person \texttt{X} dislikes all people who are friends with them. Just like \texttt{friendly}, it uses \texttt{find\_friends} to extract the list of people who like \texttt{X} and then \texttt{dislikes\_all} to check if \texttt{X} dislikes all of those people. 
+\begin{figure}[h!]
+\begin{minipage}{0.5\textwidth}
+\begin{lstlisting}[language=Prolog]
+hostile(G, X) :-
+  find_friends(G, G, X, [], Fs),
+  dislikes_all(G, X, Fs).
+\end{lstlisting}
+\end{minipage}
+\begin{minipage}{0.5\textwidth}
+\begin{lstlisting}[language=Prolog]
+dislikes_all(_, _, []).
+dislikes_all(G, X, [H|T]) :-
+  dislikes(G, X, H),
+  dislikes_all(G, X, T).
+\end{lstlisting}
+\end{minipage}
+\end{figure}
+
+\subsection{Testing}
+All local predicates are tested through the use of the query \texttt{-? g1(G1), g2(G2), local\_test(G1,G2).}. This checks that all local predicates pass on correct inputs for both the superhero graph and the alias graph. It also checks that erroneous inputs fail on the graphs. The test predicates can be seen here. All tests pass.
+\begin{figure}[h!]
+\begin{minipage}{0.5\textwidth}
+\begin{lstlisting}[language=Prolog]
+local_test(G1,G2) :-
+  pop_test(G1,G2),
+  \+(pop_err(G1,G2)),
+  out_test(G1,G2),
+  \+(out_err(G1,G2)),
+  friendly_test(G1,G2),
+  \+(friendly_err(G1,G2)),
+  host_test(G1,G2),
+  \+(host_err(G1,G2)),
+\end{lstlisting}
+\end{minipage}
+\begin{minipage}{0.5\textwidth}
+\begin{lstlisting}[language=Prolog]
+pop_test(G1,G2) :-
+  popular(G1, kara),
+  popular(G2, supergirl).
+
+pop_err(G1,G2) :-
+  popular(G1, bruce);
+  popular(G1, clark);
+  popular(G2, green_arrow).
+\end{lstlisting}
+\end{minipage}
+\end{figure}
+\begin{figure}[h!]
+\begin{minipage}{0.33\textwidth}
+\begin{lstlisting}[language=Prolog]
+out_test(G1,G2) :-
+  outcast(G1, bruce),
+  outcast(G1, oliver),
+  outcast(G2, batman).
+
+out_err(G1,G2) :-
+  outcast(G1, kara);
+  outcast(G1, clark);
+  outcast(G2, flash).
+\end{lstlisting}
+\end{minipage}
+\begin{minipage}{0.33\textwidth}
+\begin{lstlisting}[language=Prolog]
+friendly_test(G1,G2) :-
+  friendly(G1, barry),
+  friendly(G2, flash).
+
+friendly_err(G1,G2) :-
+  friendly(G1, clark);
+  friendly(G1, kara).
+\end{lstlisting}
+\end{minipage}
+\begin{minipage}{0.33\textwidth}
+\begin{lstlisting}[language=Prolog]
+host_test(G1,G2) :-
+  hostile(G1, oliver),
+  hostile(G1, bruce),
+  hostile(G2, green_arrow).
+
+host_err(G1,G2) :-
+  hostile(G1, kara);
+  hostile(G1, barry);
+  hostile(G2, superman).
+\end{lstlisting}
+\end{minipage}
+\end{figure}
+
 \section{Global Relations}
 
-% TODO in order for admires and indifferent and X = Y to be mutually exclusive
-% we ensured that X and Y are different in admires and indifferent.
-% Otherwise, e.g., Oliver would admire himself.
+The global predicates try to find paths between two people, \texttt{admires} succeeds if there is one, \texttt{indifferent} would fail in that case.
 
+If we want to implement this as a search algorithm (like Dijkstra) we need a way to mark nodes visited in order not to end up in cycles.
+This can be implemented in Prolog by carrying an agenda of people yet to check.
+This agenda is passed as an additional variable \texttt{Todo} and after checking one person this is extracted. Therefore we need a wrapper function which calls the recursive predicates with a list of all names (c.f. helper function \texttt{names/2}) and passes it to the recursive version of the predicates, respectively.
+
+Also note in order for admires and indifferent and X = Y to be mutually exclusive we ensured that X and Y are different in admires and indifferent.
+Otherwise, e.g., Oliver would admire himself.
+
+\subsection{admires}
+A person A admires another one C if either A likes C directly or there is a person B that A likes and in turn admires C. This is pretty straight-forwardly translated into Prolog by either trying to call \texttt{likes} or recursively call \texttt{admires1}.
+For this, we need to pass a list \texttt{Todo1} (see above) which is the previous \texttt{Todo} with the current person (more exact, the person's name) extracted, i.e. \texttt{select1(X, Todo, Todo1)} does the job. Once there is no-one in the agenda anymore the predicate fails.
+
+\begin{lstlisting}[language=Prolog]
+admires(G, X, Y) :-
+  different(G, X, Y),
+  names(G, Todo),
+  admires1(G, Todo, X, Y).
+
+admires1(G, _, X, Y) :-
+  likes(G, X, Y).
+admires1(G, Todo, X, Y) :-
+  elem(Z, Todo),
+  likes(G, X, Z),
+  select1(Z, Todo, Todo1),
+  admires1(G, Todo1, Z, Y).
+\end{lstlisting}
+
+\subsection{indifferent}
+Indifferent is similar, but the other way around. A person X must not like another Y (c.f. helper predicate \texttt{not\_likes/3}, calls \texttt{not\_in}
+for checking if someone is not in the list), and neither may his friends like Y.
+
+\begin{lstlisting}[language=Prolog]
+indifferent(G, X, Y) :-
+  different(G, X, Y),
+  names(G, Todo),
+  indifferent(G, Todo, X, Y).
+
+indifferent(_, [], _, _).
+indifferent(G, Todo, X, Y) :-
+  not_likes(G, X, Y),              % X does not like Y himself
+  friends(G, X, XFs),              % and X's friends are also ...
+  select1(X, Todo, Todo1),         % (exclude this person from todos)
+  filter(G, XFs, Todo1, FsTodo),   % (filter the friends who are in todos)
+  all_indifferent(G, Todo1, FsTodo, Y). % ... all indifferent to Y
+\end{lstlisting}
+
+In order to check a list of friends we first filter it for the ones that are
+still in \texttt{Todos}. For that we have a helper predicate \texttt{filter}
+which takes two lists and ``returns'' (unifies its third argument with) the
+intersection of both. This is easily implemented by taking the first list and
+checking for each element if it also occurrs (\texttt{elem}) in the second.
+In that case we include it in an accumulator. (Accumulators are a clever design
+pattern that allows us to build up a list in an intuitive way and in the base
+case copy it into the final result.)
+In the other case, if an element from the first list is \texttt{not\_in} the
+second (note that negation is again relative to the graph!), we just do not copy
+the element into the accumulator.
+
+\begin{lstlisting}[language=Prolog]
+filter(G, L1, L2, Intersect) :-
+  filter1(G, L1, L2, [], Intersect).
+
+filter1(_, [], _, Acc, Acc).
+filter1(G, [H|T], L2, Acc, Res) :-
+  elem(H, L2),
+  filter1(G, T, L2, [H|Acc], Res).
+filter1(G, [H|T], L2, Acc, Res) :-
+  not_in(G, H, L2),
+  filter1(G, T, L2, Acc, Res).
+\end{lstlisting}
+
+\texttt{all\_indifferent} then takes a list of the filtered names, iterates over it and
+checks if each element is indifferent. It is important that for each person
+we pass the current agenda when checking indifference of all its friends
+recursively. If this agenda is finally empty, \texttt{indifferent} reaches its
+base case, there is nobody left to check and the original person X is indeed
+indifferent from the target Y.
+
+\begin{lstlisting}[language=Prolog]
+all_indifferent(_, _, [], _).
+all_indifferent(G, Todo, [H|T], Y) :-
+  indifferent(G, Todo, H, Y),
+  all_indifferent(G, Todo, T, Y).
+\end{lstlisting}
+
+\subsection{Testing}
+Testing for the global predicates are performed by the query \texttt{-? g1(G1), g2(G2), global\_test(G1,G2).} which test the goals on a variety of inputs and ensure that erroneous inputs fail. All tests pass, and they can be seen below.
+\begin{figure}[h!]
+\begin{minipage}{0.5\textwidth}
+\begin{lstlisting}[language=Prolog]
+global_test(G1,G2) :-
+  adm_test(G1,G2),
+  not(adm_err(G1,G2)),
+  indif_test(G1,G2),
+  not(indif_err(G1,G2)).
+\end{lstlisting}
+\end{minipage}
+\begin{minipage}{0.5\textwidth}
+\begin{lstlisting}[language=Prolog]
+adm_test(G1,G2) :-
+  admires(G1, bruce, kara),
+  admires(G1, clark, barry),
+  admires(G1, oliver, clark),
+  admires(G2, supergirl, green_arrow).
+\end{lstlisting}
+\end{minipage}
+\end{figure}
+\begin{figure}[h!]
+\begin{minipage}{0.5\textwidth}
+\begin{lstlisting}[language=Prolog]
+adm_err(G1,G2) :-
+  admires(G1, kara, bruce);
+  admires(G1, oliver, bruce);
+  admires(G2, superman, batman).
+\end{lstlisting}
+\end{minipage}
+\begin{minipage}{0.5\textwidth}
+\begin{lstlisting}[language=Prolog]
+indif_test(G1,G2) :-
+  indifferent(G1, kara, bruce),
+  indifferent(G1, oliver, bruce),
+  indifferent(G2, superman, batman).
+\end{lstlisting}
+\end{minipage}
+\end{figure}
+\begin{figure}[h!]
+\begin{lstlisting}[language=Prolog]
+indif_err(G1,G2) :-
+  indifferent(G1, bruce, kara);
+  indifferent(G1, clarke, barry);
+  indifferent(G1, oliver, clark);
+  indifferent(G2, supergirl, green_arrow).
+\end{lstlisting}
+\end{figure}
+
+\section{Whole world properties}
+
+The \texttt{same\_world} predicate is trying to match two worlds and, if possible,
+tries to find a mapping between the members of both. In other words, we have an
+constraint satisfaction problem at hand, consisting of many identity constraints
+between people of the graphs.
+Solving this directly using backtracking is a non-trivial problem because it
+requires carefull checking of the mapping at each point, that is still to be created!
+
+Complexity theory however tells us, that checking a given solution is always easier
+than the primary problem. So we apply a so-called generate-test approach in which
+we alternately generate an arbitrary mapping and then test if it fulfills the constraints.
+
+\begin{lstlisting}[language=Prolog]
+same_world(G1, G2, Map) :-
+  same_length(G1, G2), % quick sanity check first
+  names(G1, N1),       % get the names for convenience
+  names(G2, N2),
+  % stupid generate and test approach follows ...
+  generate_mapping(N1, N2, Map),
+  test_mapping(G1, G2, Map).
+\end{lstlisting}
+
+
+Generating all combinations of people (from world 1 and world 2) is natural in
+Prolog. Again \texttt{select1} can help here, because if called with a free variable
+at the first and a list at the second position, it will extract every possible
+element by backtracking and bind it to the free variable. Thus, we construct pairs by
+fixing one element from the first list and selecting one from the second:
+
+\begin{lstlisting}[language=Prolog]
+generate_mapping([], _, []).
+generate_mapping([H|T], N2, [(H,N)|Map]) :-
+  select1(N, N2, N2R),
+  generate_mapping(T, N2R, Map).
+\end{lstlisting}
+
+That being done, we have a mapping of names that we can check - if it works, we
+are lucky, if it doesn't Prolog will generate a new one and if it tried all we are
+sure there is none. Should the mapping work we automatically have it as an output.
+
+Testing is now done by checking if for each person in world 1 the corresponding
+person in world two has the same friends, meaning they have to correspond in number
+and with regard to the mapping. Thus we need two additional helper predicates,
+one checking if there are equally many friends ( \texttt{same\_length} applied to
+two lists) and another \texttt{same\_friends} which is given the mapping and
+reviews the identities. The former is easy, it just desroys both lists simultaneously
+and succeeds if that takes the same time. Checking for identity between two lists
+is also trivial, it involves a lookup in the mapping to get the complementary name
+of the person and checks if this is \texttt{elem} of the other list of friends.
+This way we ensure that the order of friends in the adjacency list does not matter
+but at the same time there cannot be more people in F2 than in F1, because their
+length is the same.
+
+\begin{lstlisting}[language=Prolog]
+test_mapping([], _, _).
+test_mapping([H|T], G2, Map) :-
+  equal(H, person(N1, F1)),
+  elem((N1,N2), Map),   % lookup the corresponding N2
+  friends(G2, N2, F2),  % and his friends;
+  same_length(F1, F2),  % necessary, not only sanity check because
+  same_friends(F1, F2, Map), % this checks only if F1 subset_of F2
+  test_mapping(T, G2, Map).
+
+same_friends([], _, _).
+same_friends([N1|T], F2, Map) :-
+  elem((N1,N2), Map),              % lookup in mapping
+  elem(N2, F2),                    % check if N2 is in F2
+  same_friends(T, F2, Map).
+
+same_length([], []).
+same_length([_|T1], [_|T2]) :-
+  same_length(T1, T2).
+\end{lstlisting}
+
+
+\subsection{Testing}
+The \texttt{same\_world} predicate can be tested simply by running the query \texttt{-? g1(G1), g2(G2), a1(A1), whole\_test(G1,G2,A1).}. This query checks that G1 and G2 are the same world and if true results in a list of each person paired with their pair on the other world. This is checking the result list against an array of each superhero's real name paired with their alias.
+We also note that the predicate is symmetric.
+The test passes and can be seen here.
+\begin{lstlisting}[language=Prolog]
+a1([(kara,supergirl),(bruce,batman),(barry,flash),(clark,superman),(oliver,green_arrow)]).
+
+whole_test(G1,G2,A1) :-
+  same_world(G1,G2,A),
+  same_world(G2,G1,A),
+  equal(A,A1).
+\end{lstlisting}
+
+
+\section{Conclusion}
+The testing we did might not be exhaustive (since only example based), but together with the Online-TA
+we are confident we haven't missed any major bugs. The Online-TA is also testing
+edge cases such as empty graphs which requires some predicates to ensure its
+arguments are actually members of the graph. This was irritating at first but
+could easily be debugged. We may also mention that there are some queries spitting out the same
+solution multiple times. For instance, \texttt{g1(G), admires(G, X, kara).} does so,
+which in this case is due to the way the algorithm constructs the chain to super-popular kara.
+That we can live with.
 \end{document}

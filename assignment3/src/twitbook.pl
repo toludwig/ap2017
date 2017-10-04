@@ -151,15 +151,16 @@ dislikes_all(G, X, [H|T]) :-
 % admires is prone to cycles, we need to keep track of people we already visited
 admires(G, X, Y) :-
   different(G, X, Y),
-  admires1(G, G, X, Y).
+  names(G, Todo),
+  admires1(G, Todo, X, Y).
 
 admires1(G, _, X, Y) :-
   likes(G, X, Y).
-admires1(G, GTodo, X, Y) :-
-  member(GTodo, Z, _),
+admires1(G, Todo, X, Y) :-
+  elem(Z, Todo),
   likes(G, X, Z),
-  select1(person(Z, _), GTodo, GTodo1),
-  admires1(G, GTodo1, Z, Y).
+  select1(Z, Todo, Todo1),
+  admires1(G, Todo1, Z, Y).
 
 %--------------------------------------
 
@@ -172,10 +173,10 @@ indifferent(G, X, Y) :-
 indifferent(_, [], _, _).
 indifferent(G, Todo, X, Y) :-
   not_likes(G, X, Y),              % X does not like Y himself
-  friends(G, X, XFs),              % and X's friends are also
-  select1(X, Todo, Todo1),         % exclude this person from todos
-  filter(G, XFs, Todo1, FsTodo),  % filter the friends who are in todos
-  all_indifferent(G, Todo1, FsTodo, Y). % all indifferent to Y
+  friends(G, X, XFs),              % and X's friends are also ...
+  select1(X, Todo, Todo1),         % (exclude this person from todos)
+  filter(G, XFs, Todo1, FsTodo),   % (filter the friends who are in todos)
+  all_indifferent(G, Todo1, FsTodo, Y). % ... all indifferent to Y
 
 all_indifferent(_, _, [], _).
 all_indifferent(G, Todo, [H|T], Y) :-
