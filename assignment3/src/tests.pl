@@ -1,5 +1,18 @@
 :-include(twitbook).
 
+g1([person(kara, [barry, clark]),
+    person(bruce, [clark, oliver]),
+    person(barry, [kara, oliver]),
+    person(clark, [oliver, kara]),
+    person(oliver, [kara])]).
+
+g2([person(batman, [green_arrow, superman]),
+    person(green_arrow, [supergirl]),
+    person(supergirl, [flash, superman]),
+    person(flash, [green_arrow, supergirl]),
+    person(superman, [green_arrow, supergirl])]).
+
+    
 warmup_test(G) :-
   warm_test(G),
   \+(warm_err(G)),
@@ -95,4 +108,5 @@ a1([(kara,supergirl),(bruce,batman),(barry,flash),(clark,superman),(oliver,green
 
 whole_test(G1,G2,A1) :-
   same_world(G1,G2,A),
+  same_world(G2,G1,A),
   equal(A,A1).
